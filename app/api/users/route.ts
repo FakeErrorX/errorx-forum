@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getUserProfile, updateUserProfile, createUser } from "../users";
+import { sendWelcomeEmail } from "@/lib/email";
 
 export async function GET(request: NextRequest) {
   try {
@@ -44,11 +45,13 @@ export async function PUT(request: NextRequest) {
 
     const userId = (session.user as any).id;
     const body = await request.json();
-    const { name, bio, preferences } = body;
+    const { name, username, bio, image, preferences } = body;
 
     const updatedUser = await updateUserProfile(userId, {
       name,
+      username,
       bio,
+      image,
       preferences,
     });
 
@@ -97,6 +100,11 @@ export async function POST(request: NextRequest) {
       username,
       email,
       password,
+    });
+
+    // Send welcome email (don't wait for it to complete)
+    sendWelcomeEmail(email, name).catch(error => {
+      console.error('Failed to send welcome email:', error);
     });
 
     return NextResponse.json(user, { status: 201 });

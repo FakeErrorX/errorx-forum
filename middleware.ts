@@ -4,6 +4,11 @@ import type { NextRequest } from 'next/server'
 export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname
 
+  // Skip middleware for static files
+  if (pathname.match(/\.(png|jpg|jpeg|gif|svg|ico|webp)$/)) {
+    return NextResponse.next()
+  }
+
   // Check if the path is a username pattern (single segment, not a known route)
   const segments = pathname.split('/').filter(Boolean)
   
@@ -18,10 +23,15 @@ export function middleware(request: NextRequest) {
       'profile',
       'settings',
       'reset-password',
+      'members',
+      'terms',
+      'privacy',
       'api',
       'favicon.ico',
       '_next',
-      'static'
+      'static',
+      'logo-light.png',
+      'logo-dark.png'
     ]
     
     if (!knownRoutes.includes(username)) {

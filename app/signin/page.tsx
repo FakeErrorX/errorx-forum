@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Icon } from '@iconify/react';
 import Link from "next/link";
 import { toast } from "sonner";
+import { useTheme } from "next-themes";
+import Image from "next/image";
 
 interface User {
   name: string;
@@ -20,6 +22,7 @@ interface User {
 
 export default function SignInPage() {
   const router = useRouter();
+  const { theme } = useTheme();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
@@ -71,10 +74,10 @@ export default function SignInPage() {
         const session = await getSession();
         if (session?.user) {
           setUser(session.user as User);
-          toast.success("Welcome back!", {
+      toast.success("Welcome back!", {
             description: `Signed in as ${session.user.name}`
-          });
-          router.push("/");
+      });
+      router.push("/");
         }
       }
     } catch (error: any) {
@@ -159,13 +162,18 @@ export default function SignInPage() {
         <div className="hidden lg:flex lg:w-1/2 flex-col justify-center px-12 xl:px-16">
           <div className="max-w-md">
             <div className="flex items-center space-x-3 mb-8">
-              <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center">
-                <Icon icon="lucide:zap" className="h-6 w-6 text-primary-foreground" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold">ErrorX</h1>
-                <p className="text-sm text-muted-foreground">Community</p>
-              </div>
+              <button 
+                onClick={() => router.push("/")}
+                className="hover:opacity-80 transition-opacity"
+              >
+                <Image 
+                  src={theme === 'dark' ? '/logo-light.png' : '/logo-dark.png'} 
+                  alt="ErrorX Logo" 
+                  width={100}
+                  height={32}
+                  className="h-8 w-auto"
+                />
+              </button>
             </div>
             
             <h2 className="text-4xl font-bold mb-4 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
@@ -215,13 +223,18 @@ export default function SignInPage() {
             {/* Mobile Branding */}
             <div className="lg:hidden text-center">
               <div className="flex items-center justify-center space-x-3 mb-6">
-                <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center">
-                  <Icon icon="lucide:zap" className="h-6 w-6 text-primary-foreground" />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-bold">ErrorX</h1>
-                  <p className="text-sm text-muted-foreground">Community</p>
-                </div>
+                <button 
+                  onClick={() => router.push("/")}
+                  className="hover:opacity-80 transition-opacity"
+                >
+                  <Image 
+                    src={theme === 'dark' ? '/logo-light.png' : '/logo-dark.png'} 
+                    alt="ErrorX Logo" 
+                    width={100}
+                    height={32}
+                    className="h-8 w-auto"
+                  />
+                </button>
               </div>
             </div>
 
@@ -239,60 +252,60 @@ export default function SignInPage() {
               </CardHeader>
               
               <CardContent className="space-y-6">
-                {!forgotPassword ? (
-                  <>
-                    <form onSubmit={handleSignIn} className="space-y-4">
-                      <div className="space-y-2">
+            {!forgotPassword ? (
+              <>
+                <form onSubmit={handleSignIn} className="space-y-4">
+                  <div className="space-y-2">
                         <Label htmlFor="email" className="text-sm font-medium">Email address</Label>
                         <div className="relative">
                           <Icon 
                             icon="lucide:mail" 
                             className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" 
                           />
-                          <Input
-                            id="email"
-                            type="email"
-                            placeholder="Enter your email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="Enter your email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
                             className="pl-10 h-11"
-                            required
-                          />
+                      required
+                    />
                         </div>
-                      </div>
-                      
-                      <div className="space-y-2">
+                  </div>
+                  
+                  <div className="space-y-2">
                         <Label htmlFor="password" className="text-sm font-medium">Password</Label>
-                        <div className="relative">
+                    <div className="relative">
                           <Icon 
                             icon="lucide:lock" 
                             className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" 
                           />
-                          <Input
-                            id="password"
-                            type={showPassword ? "text" : "password"}
-                            placeholder="Enter your password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Enter your password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
                             className="pl-10 pr-10 h-11"
-                            required
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                            onClick={() => setShowPassword(!showPassword)}
-                          >
-                            {showPassword ? (
+                        required
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? (
                               <Icon icon="lucide:eye-off" className="h-4 w-4 text-muted-foreground" />
-                            ) : (
+                        ) : (
                               <Icon icon="lucide:eye" className="h-4 w-4 text-muted-foreground" />
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                  
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
                           <input
@@ -314,19 +327,19 @@ export default function SignInPage() {
                       </div>
                       
                       <Button type="submit" className="w-full h-11 text-base font-medium" disabled={loading}>
-                        {loading ? (
-                          <>
-                            <Icon icon="lucide:loader-2" className="mr-2 h-4 w-4 animate-spin" />
-                            Signing in...
-                          </>
-                        ) : (
+                    {loading ? (
+                      <>
+                        <Icon icon="lucide:loader-2" className="mr-2 h-4 w-4 animate-spin" />
+                        Signing in...
+                      </>
+                    ) : (
                           <>
                             <Icon icon="lucide:log-in" className="mr-2 h-4 w-4" />
                             Sign in
                           </>
-                        )}
-                      </Button>
-                    </form>
+                    )}
+                  </Button>
+                </form>
 
                     <div className="relative">
                       <div className="absolute inset-0 flex items-center">
@@ -346,19 +359,19 @@ export default function SignInPage() {
                         <Icon icon="lucide:chrome" className="mr-2 h-4 w-4" />
                         Google
                       </Button>
-                    </div>
+                </div>
 
                     <div className="text-center">
-                      <p className="text-sm text-muted-foreground">
-                        Don't have an account?{" "}
+                  <p className="text-sm text-muted-foreground">
+                    Don't have an account?{" "}
                         <Link href="/signup" className="text-primary hover:underline font-medium">
                           Create one now
-                        </Link>
-                      </p>
-                    </div>
-                  </>
-                ) : (
-                  <>
+                    </Link>
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
                     <div className="text-center mb-6">
                       <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
                         <Icon icon="lucide:key" className="h-8 w-8 text-primary" />
@@ -369,55 +382,55 @@ export default function SignInPage() {
                       </p>
                     </div>
 
-                    <form onSubmit={handleForgotPassword} className="space-y-4">
-                      <div className="space-y-2">
+                <form onSubmit={handleForgotPassword} className="space-y-4">
+                  <div className="space-y-2">
                         <Label htmlFor="resetEmail" className="text-sm font-medium">Email address</Label>
                         <div className="relative">
                           <Icon 
                             icon="lucide:mail" 
                             className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" 
                           />
-                          <Input
-                            id="resetEmail"
-                            type="email"
-                            placeholder="Enter your email address"
-                            value={resetEmail}
-                            onChange={(e) => setResetEmail(e.target.value)}
+                    <Input
+                      id="resetEmail"
+                      type="email"
+                      placeholder="Enter your email address"
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
                             className="pl-10 h-11"
-                            required
-                          />
+                      required
+                    />
                         </div>
-                      </div>
-                      
+                  </div>
+                  
                       <Button type="submit" className="w-full h-11 text-base font-medium" disabled={resetLoading}>
-                        {resetLoading ? (
-                          <>
-                            <Icon icon="lucide:loader-2" className="mr-2 h-4 w-4 animate-spin" />
-                            Sending reset email...
-                          </>
-                        ) : (
+                    {resetLoading ? (
+                      <>
+                        <Icon icon="lucide:loader-2" className="mr-2 h-4 w-4 animate-spin" />
+                        Sending reset email...
+                      </>
+                    ) : (
                           <>
                             <Icon icon="lucide:send" className="mr-2 h-4 w-4" />
                             Send reset email
                           </>
-                        )}
-                      </Button>
-                    </form>
+                    )}
+                  </Button>
+                </form>
 
                     <div className="text-center">
-                      <button
-                        type="button"
+                  <button
+                    type="button"
                         onClick={() => setForgotPassword(false)}
                         className="text-sm text-primary hover:underline font-medium"
                       >
                         <Icon icon="lucide:arrow-left" className="inline h-3 w-3 mr-1" />
-                        Back to sign in
-                      </button>
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
+                    Back to sign in
+                  </button>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
 
             <div className="text-center">
               <p className="text-xs text-muted-foreground">

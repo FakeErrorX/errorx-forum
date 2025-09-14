@@ -2,6 +2,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
+import { useTheme } from "next-themes";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +26,8 @@ interface User {
   name: string;
   email: string;
   id: string;
+  image?: string | null;
+  username?: string | null;
 }
 
 interface ForumCategory {
@@ -57,12 +61,29 @@ interface ForumPost {
 export default function HomePage() {
   const router = useRouter();
   const { data: session, status } = useSession();
+  const { theme } = useTheme();
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [categories, setCategories] = useState<ForumCategory[]>([]);
   const [posts, setPosts] = useState<ForumPost[]>([]);
   const [searchResults, setSearchResults] = useState<ForumPost[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  // Load current user data
+  const loadCurrentUser = async () => {
+    if (!session?.user) return;
+    
+    try {
+      const response = await fetch('/api/users');
+      if (response.ok) {
+        const userData = await response.json();
+        setCurrentUser(userData);
+      }
+    } catch (error) {
+      console.error('Error loading current user:', error);
+    }
+  };
 
   // Load data from API
   const loadData = async () => {
@@ -124,6 +145,7 @@ export default function HomePage() {
     
     const initializeData = async () => {
       await loadData();
+      await loadCurrentUser();
       setLoading(false);
     };
     
@@ -161,8 +183,24 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
-              <h1 className="text-2xl font-bold text-foreground">ErrorX Community</h1>
-              <Badge variant="secondary">Methods & Resources</Badge>
+              <div className="flex items-center space-x-3">
+                <button 
+                  onClick={() => router.push("/")}
+                  className="hover:opacity-80 transition-opacity"
+                >
+                  <Image 
+                    src={theme === 'dark' ? '/logo-light.png' : '/logo-dark.png'} 
+                    alt="ErrorX Logo" 
+                    width={100}
+                    height={32}
+                    className="h-8 w-auto"
+                  />
+                </button>
+              </div>
+              <Button variant="ghost" onClick={() => router.push("/members")}>
+                <Icon icon="lucide:users" className="h-4 w-4 mr-2" />
+                Members
+              </Button>
             </div>
             
             <div className="flex items-center space-x-4">
@@ -191,17 +229,17 @@ export default function HomePage() {
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                         <Avatar className="h-8 w-8">
-                          <AvatarImage src={session.user.image || ""} alt={session.user.name || "User"} />
-                          <AvatarFallback>{(session.user.name || "U").charAt(0).toUpperCase()}</AvatarFallback>
+                          <AvatarImage src={currentUser?.image || session.user.image || ""} alt={currentUser?.name || session.user.name || "User"} />
+                          <AvatarFallback>{(currentUser?.name || session.user.name || "U").charAt(0).toUpperCase()}</AvatarFallback>
                         </Avatar>
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="w-56" align="end" forceMount>
                       <DropdownMenuLabel className="font-normal">
                         <div className="flex flex-col space-y-1">
-                          <p className="text-sm font-medium leading-none">{session.user.name}</p>
+                          <p className="text-sm font-medium leading-none">{currentUser?.name || session.user.name}</p>
                           <p className="text-xs leading-none text-muted-foreground">
-                            {session.user.email}
+                            {currentUser?.username ? `@${currentUser.username}` : session.user.email}
                           </p>
                         </div>
                       </DropdownMenuLabel>

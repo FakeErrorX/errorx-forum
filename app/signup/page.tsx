@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Icon } from '@iconify/react';
 import Link from "next/link";
 import { toast } from "sonner";
+import { useTheme } from "next-themes";
+import Image from "next/image";
 
 interface User {
   name: string;
@@ -20,6 +22,7 @@ interface User {
 
 export default function SignUpPage() {
   const router = useRouter();
+  const { theme } = useTheme();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
@@ -175,13 +178,18 @@ export default function SignUpPage() {
         <div className="hidden lg:flex lg:w-1/2 flex-col justify-center px-12 xl:px-16">
           <div className="max-w-md">
             <div className="flex items-center space-x-3 mb-8">
-              <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center">
-                <Icon icon="lucide:zap" className="h-6 w-6 text-primary-foreground" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold">ErrorX</h1>
-                <p className="text-sm text-muted-foreground">Community</p>
-              </div>
+              <button 
+                onClick={() => router.push("/")}
+                className="hover:opacity-80 transition-opacity"
+              >
+                <Image 
+                  src={theme === 'dark' ? '/logo-light.png' : '/logo-dark.png'} 
+                  alt="ErrorX Logo" 
+                  width={100}
+                  height={32}
+                  className="h-8 w-auto"
+                />
+              </button>
             </div>
             
             <h2 className="text-4xl font-bold mb-4 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
@@ -231,13 +239,18 @@ export default function SignUpPage() {
             {/* Mobile Branding */}
             <div className="lg:hidden text-center">
               <div className="flex items-center justify-center space-x-3 mb-6">
-                <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center">
-                  <Icon icon="lucide:zap" className="h-6 w-6 text-primary-foreground" />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-bold">ErrorX</h1>
-                  <p className="text-sm text-muted-foreground">Community</p>
-                </div>
+                <button 
+                  onClick={() => router.push("/")}
+                  className="hover:opacity-80 transition-opacity"
+                >
+                  <Image 
+                    src={theme === 'dark' ? '/logo-light.png' : '/logo-dark.png'} 
+                    alt="ErrorX Logo" 
+                    width={100}
+                    height={32}
+                    className="h-8 w-auto"
+                  />
+                </button>
               </div>
             </div>
 

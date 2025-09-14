@@ -2,8 +2,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
-// Removed direct database import
-// Remove direct import of server-side functions
+import { useTheme } from "next-themes";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,8 +12,11 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Icon } from '@iconify/react';
 import { ModeToggle } from "@/components/mode-toggle";
+import { toast } from "sonner";
+import { extractKeyFromUrl } from "@/lib/s3";
 
 interface User {
   id: string;
@@ -53,6 +56,7 @@ interface UserPost {
 export default function ProfilePage() {
   const router = useRouter();
   const { data: session, status } = useSession();
+  const { theme } = useTheme();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
@@ -77,6 +81,10 @@ export default function ProfilePage() {
   const [bio, setBio] = useState("");
   const [location, setLocation] = useState("");
   const [website, setWebsite] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarDeleting, setAvatarDeleting] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Load user posts
   const loadUserPosts = async (userId: string) => {
@@ -124,6 +132,7 @@ export default function ProfilePage() {
           setName(userData.name || "");
           setUsername(userData.username || "");
           setBio(userData.bio || "");
+          setAvatarUrl(userData.image || "");
           setLocation(""); // Not stored in current schema
           setWebsite(""); // Not stored in current schema
           
@@ -188,6 +197,132 @@ export default function ProfilePage() {
     }
   };
 
+  const handleAvatarUpload = async (file: {
+    key: string;
+    url: string;
+    name: string;
+    size: number;
+    type: string;
+  }) => {
+    if (!user) return;
+    
+    setAvatarUploading(true);
+    try {
+      // Delete old avatar if it exists and is from S3
+      if (user.image) {
+        const oldKey = extractKeyFromUrl(user.image);
+        if (oldKey) {
+          try {
+            // Delete old avatar from S3
+            const deleteResponse = await fetch('/api/files', {
+              method: 'DELETE',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ key: oldKey }),
+            });
+            
+            if (deleteResponse.ok) {
+              console.log('Old avatar deleted successfully');
+            } else {
+              console.warn('Failed to delete old avatar, but continuing with upload');
+            }
+          } catch (deleteError) {
+            console.warn('Error deleting old avatar:', deleteError);
+            // Continue with upload even if deletion fails
+          }
+        }
+      }
+
+      // Update user profile with new avatar
+      const response = await fetch('/api/users', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          image: file.url,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        toast.error(errorData.error || "Failed to update avatar");
+        return;
+      }
+
+      const updatedUser = await response.json();
+      setUser(updatedUser);
+      setAvatarUrl(file.url);
+      toast.success("Avatar updated successfully!");
+    } catch (error: any) {
+      console.error('Avatar upload error:', error);
+      toast.error("Failed to update avatar. Please try again.");
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
+  const handleAvatarDelete = () => {
+    setShowDeleteDialog(true);
+  };
+
+  const confirmAvatarDelete = async () => {
+    if (!user) return;
+    
+    setAvatarDeleting(true);
+    setShowDeleteDialog(false);
+    try {
+      // Delete current avatar from S3 if it exists
+      if (user.image) {
+        const oldKey = extractKeyFromUrl(user.image);
+        if (oldKey) {
+          try {
+            const deleteResponse = await fetch('/api/files', {
+              method: 'DELETE',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ key: oldKey }),
+            });
+            
+            if (deleteResponse.ok) {
+              console.log('Avatar deleted from S3 successfully');
+            } else {
+              console.warn('Failed to delete avatar from S3, but continuing with profile update');
+            }
+          } catch (deleteError) {
+            console.warn('Error deleting avatar from S3:', deleteError);
+            // Continue with profile update even if S3 deletion fails
+          }
+        }
+      }
+
+      // Update user profile to remove avatar
+      const response = await fetch('/api/users', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          image: null,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        toast.error(errorData.error || "Failed to remove avatar");
+        return;
+      }
+
+      const updatedUser = await response.json();
+      setUser(updatedUser);
+      setAvatarUrl("");
+      toast.success("Avatar removed successfully!");
+    } catch (error: any) {
+      console.error('Avatar deletion error:', error);
+      toast.error("Failed to remove avatar. Please try again.");
+    } finally {
+      setAvatarDeleting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -221,10 +356,20 @@ export default function ProfilePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
-              <Button variant="ghost" onClick={() => router.push("/")}>
-                <Icon icon="lucide:arrow-left" className="h-4 w-4 mr-2" />
-                Back to Forum
-              </Button>
+              <div className="flex items-center space-x-3">
+                <button 
+                  onClick={() => router.push("/")}
+                  className="hover:opacity-80 transition-opacity"
+                >
+                  <Image 
+                    src={theme === 'dark' ? '/logo-light.png' : '/logo-dark.png'} 
+                    alt="ErrorX Logo" 
+                    width={100}
+                    height={32}
+                    className="h-8 w-auto"
+                  />
+                </button>
+              </div>
             </div>
             
             <div className="flex items-center space-x-4">
@@ -245,46 +390,173 @@ export default function ProfilePage() {
           <Card>
             <CardContent className="p-8">
               <div className="flex flex-col md:flex-row items-start md:items-center space-y-4 md:space-y-0 md:space-x-6">
-                <Avatar className="h-24 w-24">
-                  <AvatarImage src={user.image || ""} alt={user.name || "User"} />
-                  <AvatarFallback className="text-2xl">
-                    {user.name?.charAt(0).toUpperCase() || "U"}
-                  </AvatarFallback>
-                </Avatar>
-                
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center space-x-4 mb-2">
-                    <h1 className="text-3xl font-bold text-foreground">{user.name}</h1>
-                    <Badge variant="secondary">Member</Badge>
-                  </div>
-                  
-                  {!isEditing ? (
-                    <div className="space-y-2">
-                      {user.bio && (
-                        <p className="text-muted-foreground">{user.bio}</p>
-                      )}
-                      <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                        <div className="flex items-center">
-                          <Icon icon="lucide:calendar" className="h-4 w-4 mr-1" />
-                          Joined {formatDate(user.createdAt)}
-                        </div>
-                        <div className="flex items-center">
-                          <Icon icon="lucide:message-square" className="h-4 w-4 mr-1" />
-                          {user.postCount} posts
-                        </div>
-                        <div className="flex items-center">
-                          <Icon icon="lucide:star" className="h-4 w-4 mr-1" />
-                          {user.reputation} reputation
+                {!isEditing ? (
+                  <>
+                    <div className="flex items-center space-x-4">
+                      <Avatar className="h-20 w-20">
+                        <AvatarImage src={user.image || undefined} alt={user.name || "User"} />
+                        <AvatarFallback className="text-2xl">
+                          {user.name?.charAt(0).toUpperCase() || "U"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <h1 className="text-3xl font-bold text-foreground">{user.name}</h1>
+                        <p className="text-lg text-muted-foreground">@{user.username || "username"}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center space-x-4 mb-2">
+                        <Badge variant="secondary">Member</Badge>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        {user.bio && (
+                          <p className="text-muted-foreground">{user.bio}</p>
+                        )}
+                        <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                          <div className="flex items-center">
+                            <Icon icon="lucide:calendar" className="h-4 w-4 mr-1" />
+                            Joined {formatDate(user.createdAt)}
+                          </div>
+                          <div className="flex items-center">
+                            <Icon icon="lucide:message-square" className="h-4 w-4 mr-1" />
+                            {user.postCount} posts
+                          </div>
+                          <div className="flex items-center">
+                            <Icon icon="lucide:star" className="h-4 w-4 mr-1" />
+                            {user.reputation} reputation
+                          </div>
                         </div>
                       </div>
                     </div>
-                  ) : (
+                  </>
+                ) : (
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center space-x-4 mb-2">
+                      <h1 className="text-3xl font-bold text-foreground">Edit Profile</h1>
+                      <Badge variant="secondary">Member</Badge>
+                    </div>
                     <div className="space-y-4">
                       {error && (
                         <Alert variant="destructive">
                           <AlertDescription>{error}</AlertDescription>
                         </Alert>
                       )}
+                      
+                      {/* Avatar Upload */}
+                      <div className="space-y-2">
+                        <Label>Avatar</Label>
+                        <div className="flex items-center space-x-4">
+                          <div className="relative group">
+                            <Avatar className="h-16 w-16">
+                              <AvatarImage src={avatarUrl || user?.image || undefined} alt={user?.name || "User"} />
+                              <AvatarFallback className="text-lg">
+                                {user?.name?.charAt(0).toUpperCase() || "U"}
+                              </AvatarFallback>
+                            </Avatar>
+                            
+                            {/* Upload Overlay - Only show when no avatar exists */}
+                            {!(user?.image || avatarUrl) && (
+                              <div className="absolute inset-0 bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      // Create a temporary file object for upload
+                                      const tempFile = {
+                                        key: '',
+                                        url: '',
+                                        name: file.name,
+                                        size: file.size,
+                                        type: file.type
+                                      };
+                                      
+                                      // Upload the file
+                                      const formData = new FormData();
+                                      formData.append('file', file);
+                                      formData.append('folder', 'avatars');
+                                      formData.append('allowedTypes', 'images');
+                                      
+                                      fetch('/api/upload', {
+                                        method: 'POST',
+                                        body: formData,
+                                      })
+                                      .then(response => response.json())
+                                      .then(data => {
+                                        if (data.success) {
+                                          handleAvatarUpload(data.file);
+                                        } else {
+                                          toast.error(data.error || 'Upload failed');
+                                        }
+                                      })
+                                      .catch(error => {
+                                        console.error('Upload error:', error);
+                                        toast.error('Upload failed');
+                                      });
+                                    }
+                                  }}
+                                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                  disabled={avatarUploading || avatarDeleting}
+                                />
+                                {avatarUploading ? (
+                                  <Icon icon="lucide:loader-2" className="h-6 w-6 text-white animate-spin" />
+                                ) : (
+                                  <Icon icon="lucide:upload" className="h-6 w-6 text-white" />
+                                )}
+                              </div>
+                            )}
+                            
+                            {/* Delete Button */}
+                            {(user?.image || avatarUrl) && (
+                              <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    disabled={avatarDeleting || avatarUploading}
+                                    className="absolute -top-2 -right-2 h-6 w-6 p-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                                  >
+                                    {avatarDeleting ? (
+                                      <Icon icon="lucide:loader-2" className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                      <Icon icon="lucide:x" className="h-3 w-3" />
+                                    )}
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete Avatar</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure you want to delete your avatar? This action cannot be undone and your avatar will be permanently removed.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={confirmAvatarDelete}>
+                                      Delete Avatar
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
+                          </div>
+                          
+                          <div className="flex-1">
+                            <p className="text-sm text-muted-foreground">
+                              {user?.image || avatarUrl 
+                                ? "Hover over avatar to delete current image" 
+                                : "Hover over avatar to upload new image"
+                              }
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Max 2MB • JPG, PNG, GIF, WebP, SVG
+                            </p>
+                          </div>
+                        </div>
+                      </div>
                       
                       <div className="space-y-2">
                         <Label htmlFor="name">Display Name</Label>
@@ -316,8 +588,8 @@ export default function ProfilePage() {
                         />
                       </div>
                     </div>
-                  )}
                 </div>
+                )}
                 
                 <div className="flex space-x-2">
                   {!isEditing ? (
