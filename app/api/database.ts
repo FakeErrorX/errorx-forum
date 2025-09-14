@@ -84,7 +84,7 @@ export const createPost = async (postData: Omit<ForumPost, 'id' | 'createdAt' | 
 
 export const getPosts = async (limit: number = 25, offset: number = 0, categoryId?: string, authorId?: string) => {
   try {
-    const where: any = {};
+    const where: Record<string, string> = {};
     if (categoryId) where.categoryId = categoryId;
     if (authorId) where.authorId = authorId;
     

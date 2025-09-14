@@ -52,7 +52,8 @@ export async function POST(request: NextRequest) {
 
     // Get user's username
     const { getUserProfile } = await import("../users");
-    const user = await getUserProfile(session.user.id);
+    const userId = (session.user as any).id;
+    const user = await getUserProfile(userId);
     if (!user) {
       return NextResponse.json(
         { error: "User not found" },
@@ -64,7 +65,7 @@ export async function POST(request: NextRequest) {
       title,
       content,
       categoryId,
-      authorId: session.user.id,
+      authorId: userId,
       authorUsername: user.username || user.name || "Anonymous",
       isPinned: false,
       isLocked: false,

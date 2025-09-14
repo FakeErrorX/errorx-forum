@@ -56,7 +56,14 @@ export async function createUser(userData: CreateUserData): Promise<UserProfile>
       }
     });
 
-    return userProfile as UserProfile;
+    return {
+      ...userProfile,
+      preferences: userProfile.preferences as {
+        theme: 'light' | 'dark' | 'system';
+        notifications: boolean;
+        emailUpdates: boolean;
+      }
+    } as UserProfile;
   } catch (error) {
     console.error('Error creating user profile:', error);
     throw new Error(`Failed to create user profile: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -76,7 +83,14 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
       return null;
     }
 
-    return user as UserProfile;
+    return {
+      ...user,
+      preferences: user.preferences as {
+        theme: 'light' | 'dark' | 'system';
+        notifications: boolean;
+        emailUpdates: boolean;
+      }
+    } as UserProfile;
   } catch (error) {
     console.error('Error getting user profile:', error);
     return null;
@@ -96,7 +110,14 @@ export async function getUserByEmail(email: string): Promise<UserProfile | null>
       return null;
     }
 
-    return user as UserProfile;
+    return {
+      ...user,
+      preferences: user.preferences as {
+        theme: 'light' | 'dark' | 'system';
+        notifications: boolean;
+        emailUpdates: boolean;
+      }
+    } as UserProfile;
   } catch (error) {
     console.error('Error getting user by email:', error);
     return null;
@@ -116,7 +137,14 @@ export async function updateUserProfile(
       data: updates
     });
 
-    return result as UserProfile;
+    return {
+      ...result,
+      preferences: result.preferences as {
+        theme: 'light' | 'dark' | 'system';
+        notifications: boolean;
+        emailUpdates: boolean;
+      }
+    } as UserProfile;
   } catch (error) {
     console.error('Error updating user profile:', error);
     throw new Error('Failed to update user profile');
@@ -219,7 +247,14 @@ export async function verifyPassword(email: string, password: string): Promise<U
       return null;
     }
 
-    return user as UserProfile;
+    return {
+      ...user,
+      preferences: user.preferences as {
+        theme: 'light' | 'dark' | 'system';
+        notifications: boolean;
+        emailUpdates: boolean;
+      }
+    } as UserProfile;
   } catch (error) {
     console.error('Error verifying password:', error);
     return null;

@@ -13,7 +13,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const user = await getUserProfile(session.user.id);
+    const userId = (session.user as any).id;
+    const user = await getUserProfile(userId);
     if (!user) {
       return NextResponse.json(
         { error: "User not found" },
@@ -41,10 +42,11 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    const userId = (session.user as any).id;
     const body = await request.json();
     const { name, bio, preferences } = body;
 
-    const updatedUser = await updateUserProfile(session.user.id, {
+    const updatedUser = await updateUserProfile(userId, {
       name,
       bio,
       preferences,

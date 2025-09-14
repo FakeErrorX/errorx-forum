@@ -91,11 +91,24 @@ export default function SignInPage() {
     setResetLoading(true);
 
     try {
-      // TODO: Implement password reset functionality
-      toast.info("Password reset not implemented yet", {
-        description: "Please contact support for password reset assistance."
+      const response = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: resetEmail })
       });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send reset email');
+      }
+
+      toast.success("Reset link sent!", {
+        description: data.message || "Check your email for password reset instructions."
+      });
+      
       setResetEmail("");
+      setForgotPassword(false);
     } catch (error: any) {
       toast.error("Failed to send reset email", {
         description: error.message || "Please check your email address and try again."

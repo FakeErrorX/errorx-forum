@@ -5,10 +5,11 @@ import { getPostById, updatePost, deletePost, incrementPostViews } from "../../d
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const post = await getPostById(params.id);
+    const { id } = await params;
+    const post = await getPostById(id);
     
     if (!post) {
       return NextResponse.json(
@@ -18,7 +19,7 @@ export async function GET(
     }
 
     // Increment view count
-    await incrementPostViews(params.id);
+    await incrementPostViews(id);
 
     return NextResponse.json(post);
   } catch (error) {
@@ -32,7 +33,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -43,8 +44,9 @@ export async function PUT(
       );
     }
 
+    const { id } = await params;
     const body = await request.json();
-    const post = await getPostById(params.id);
+    const post = await getPostById(id);
 
     if (!post) {
       return NextResponse.json(
@@ -54,14 +56,15 @@ export async function PUT(
     }
 
     // Check if user is the author
-    if (post.authorId !== session.user.id) {
+    const userId = (session.user as any).id;
+    if (post.authorId !== userId) {
       return NextResponse.json(
         { error: "Forbidden" },
         { status: 403 }
       );
     }
 
-    const updatedPost = await updatePost(params.id, body);
+    const updatedPost = await updatePost(id, body);
     return NextResponse.json(updatedPost);
   } catch (error) {
     console.error("Error updating post:", error);
@@ -74,7 +77,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -85,7 +88,8 @@ export async function DELETE(
       );
     }
 
-    const post = await getPostById(params.id);
+    const { id } = await params;
+    const post = await getPostById(id);
 
     if (!post) {
       return NextResponse.json(
@@ -95,14 +99,15 @@ export async function DELETE(
     }
 
     // Check if user is the author
-    if (post.authorId !== session.user.id) {
+    const userId = (session.user as any).id;
+    if (post.authorId !== userId) {
       return NextResponse.json(
         { error: "Forbidden" },
         { status: 403 }
       );
     }
 
-    await deletePost(params.id);
+    await deletePost(id);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error deleting post:", error);

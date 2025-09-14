@@ -8,12 +8,14 @@ export async function PUT(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     
-    if (!session?.user?.id) {
+    if (!session?.user) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
       );
     }
+
+    const userId = (session.user as any).id;
 
     const body = await request.json();
     const { currentPassword, newPassword } = body;
@@ -34,7 +36,7 @@ export async function PUT(request: NextRequest) {
 
     // Get user with password
     const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { id: userId },
       select: { password: true }
     });
 
@@ -59,7 +61,7 @@ export async function PUT(request: NextRequest) {
 
     // Update password
     await prisma.user.update({
-      where: { id: session.user.id },
+      where: { id: userId },
       data: { password: hashedNewPassword }
     });
 

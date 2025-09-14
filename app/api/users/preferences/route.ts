@@ -7,12 +7,14 @@ export async function PUT(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     
-    if (!session?.user?.id) {
+    if (!session?.user) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
       );
     }
+
+    const userId = (session.user as any).id;
 
     const body = await request.json();
     const { theme, notifications, emailUpdates } = body;
@@ -27,18 +29,18 @@ export async function PUT(request: NextRequest) {
 
     // Get current preferences
     const currentUser = await prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { id: userId },
       select: { preferences: true }
     });
 
-    const currentPreferences = currentUser?.preferences as any || {
+    const currentPreferences = (currentUser?.preferences as Record<string, unknown>) || {
       theme: 'system',
       notifications: true,
       emailUpdates: true
     };
 
     // Build update data
-    const updateData: any = {
+    const updateData: Record<string, unknown> = {
       preferences: {
         ...currentPreferences,
         ...(theme !== undefined && { theme }),
@@ -49,7 +51,7 @@ export async function PUT(request: NextRequest) {
 
     // Update user preferences
     const updatedUser = await prisma.user.update({
-      where: { id: session.user.id },
+      where: { id: userId },
       data: updateData,
       select: {
         id: true,
