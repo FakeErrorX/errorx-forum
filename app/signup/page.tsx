@@ -531,14 +531,15 @@ export default function SignUpPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <Button variant="outline" className="h-11" disabled>
-                    <Icon icon="lucide:github" className="mr-2 h-4 w-4" />
-                    GitHub
-                  </Button>
-                  <Button variant="outline" className="h-11" disabled>
+                <div className="flex justify-center">
+                  <Button 
+                    variant="outline" 
+                    className="h-11 w-full max-w-xs" 
+                    onClick={() => signIn("google", { callbackUrl: "/" })}
+                    disabled={loading}
+                  >
                     <Icon icon="lucide:chrome" className="mr-2 h-4 w-4" />
-                    Google
+                    Sign up with Google
                   </Button>
                 </div>
 

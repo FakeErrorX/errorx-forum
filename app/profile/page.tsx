@@ -220,9 +220,7 @@ export default function ProfilePage() {
               body: JSON.stringify({ key: oldKey }),
             });
             
-            if (deleteResponse.ok) {
-              console.log('Old avatar deleted successfully');
-            } else {
+            if (!deleteResponse.ok) {
               console.warn('Failed to delete old avatar, but continuing with upload');
             }
           } catch (deleteError) {
@@ -282,9 +280,7 @@ export default function ProfilePage() {
               body: JSON.stringify({ key: oldKey }),
             });
             
-            if (deleteResponse.ok) {
-              console.log('Avatar deleted from S3 successfully');
-            } else {
+            if (!deleteResponse.ok) {
               console.warn('Failed to delete avatar from S3, but continuing with profile update');
             }
           } catch (deleteError) {

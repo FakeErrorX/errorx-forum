@@ -2,16 +2,20 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useTheme } from "next-themes";
-import Image from "next/image";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Icon } from '@iconify/react';
-import { ModeToggle } from "@/components/mode-toggle";
+import Header from "@/components/layout/header";
+
+interface User {
+  name: string;
+  email: string;
+  userId: number;
+  image?: string | null;
+  username?: string | null;
+}
 
 interface Member {
   userId: number; // Custom sequential user ID (only public ID)
@@ -30,12 +34,28 @@ interface Member {
 export default function MembersPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
-  const { theme, resolvedTheme } = useTheme();
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredMembers, setFilteredMembers] = useState<Member[]>([]);
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'posts' | 'reputation'>('newest');
+  const [isSearching, setIsSearching] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  // Load current user data
+  const loadCurrentUser = async () => {
+    if (!session?.user) return;
+    
+    try {
+      const response = await fetch('/api/users');
+      if (response.ok) {
+        const userData = await response.json();
+        setCurrentUser(userData);
+      }
+    } catch (error) {
+      console.error('Error loading current user:', error);
+    }
+  };
 
   // Load members data
   const loadMembers = async () => {
@@ -93,8 +113,15 @@ export default function MembersPage() {
   }, [members, searchQuery, sortBy]);
 
   useEffect(() => {
-    loadMembers();
-  }, []);
+    if (status === "loading") return;
+    
+    const initializeData = async () => {
+      await loadMembers();
+      await loadCurrentUser();
+    };
+    
+    initializeData();
+  }, [status]);
 
   const formatDate = (date: string) => {
     return new Date(date).toLocaleDateString('en-US', {
@@ -119,74 +146,37 @@ export default function MembersPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="bg-background border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-3">
-                <button 
-                  onClick={() => router.push("/")}
-                  className="hover:opacity-80 transition-opacity"
-                >
-                  <Image 
-                    src={resolvedTheme === 'dark' ? '/logo-light.png' : '/logo-dark.png'} 
-                    alt="ErrorX Logo" 
-                    width={100}
-                    height={32}
-                    className="h-8 w-auto"
-                  />
-                </button>
-              </div>
-              <Badge variant="secondary">{Array.isArray(filteredMembers) ? filteredMembers.length : 0} members</Badge>
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              <ModeToggle />
-              {session?.user ? (
-                <Button variant="outline" onClick={() => router.push("/profile")}>
-                  <Icon icon="lucide:user" className="h-4 w-4 mr-2" />
-                  My Profile
-                </Button>
-              ) : (
-                <Button variant="outline" onClick={() => router.push("/signin")}>
-                  Sign In
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
+      <Header 
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        isSearching={isSearching}
+        currentUser={currentUser}
+        searchPlaceholder="Search members..."
+      />
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="space-y-6">
-          {/* Search and Filters */}
+          {/* Page Header */}
+          <div className="flex items-center justify-between">
+            <h1 className="text-3xl font-bold text-foreground">Members</h1>
+            <Badge variant="secondary" className="text-lg px-4 py-2">
+              {Array.isArray(filteredMembers) ? filteredMembers.length : 0} members
+            </Badge>
+          </div>
+
+          {/* Sort Filters */}
           <Card>
             <CardContent className="p-6">
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="flex-1">
-                  <div className="relative">
-                    <Icon icon="lucide:search" className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                    <Input
-                      placeholder="Search members by name, username, or bio..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-                
-                <div className="flex gap-2">
-                  <Tabs value={sortBy} onValueChange={(value) => setSortBy(value as any)}>
-                    <TabsList>
-                      <TabsTrigger value="newest">Newest</TabsTrigger>
-                      <TabsTrigger value="oldest">Oldest</TabsTrigger>
-                      <TabsTrigger value="posts">Most Posts</TabsTrigger>
-                      <TabsTrigger value="reputation">Reputation</TabsTrigger>
-                    </TabsList>
-                  </Tabs>
-                </div>
+              <div className="flex justify-center">
+                <Tabs value={sortBy} onValueChange={(value) => setSortBy(value as any)}>
+                  <TabsList>
+                    <TabsTrigger value="newest">Newest</TabsTrigger>
+                    <TabsTrigger value="oldest">Oldest</TabsTrigger>
+                    <TabsTrigger value="posts">Most Posts</TabsTrigger>
+                    <TabsTrigger value="reputation">Reputation</TabsTrigger>
+                  </TabsList>
+                </Tabs>
               </div>
             </CardContent>
           </Card>
@@ -199,7 +189,7 @@ export default function MembersPage() {
                 className="hover:shadow-lg transition-shadow cursor-pointer"
                 onClick={() => {
                   if (member.username) {
-                    router.push(`/${member.username}`);
+                    router.push(`/profile/${member.username}`);
                   }
                 }}
               >

@@ -99,11 +99,6 @@ export default function PublicProfilePage() {
           const userData = await response.json();
           setUser(userData);
           await loadUserPosts(userData.id);
-          
-          // Update URL to shorter format if not already
-          if (window.location.pathname.startsWith('/profile/')) {
-            window.history.replaceState(null, '', `/${username}`);
-          }
         } else if (response.status === 404) {
           setError("User not found");
         } else {
