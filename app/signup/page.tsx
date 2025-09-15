@@ -22,7 +22,7 @@ interface User {
 
 export default function SignUpPage() {
   const router = useRouter();
-  const { theme } = useTheme();
+  const { theme, resolvedTheme } = useTheme();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
@@ -34,6 +34,58 @@ export default function SignUpPage() {
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  
+  // Username validation states
+  const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid'>('idle');
+  const [usernameMessage, setUsernameMessage] = useState("");
+
+  // Check username availability
+  const checkUsernameAvailability = async (username: string) => {
+    if (username.length < 3) {
+      setUsernameStatus('invalid');
+      setUsernameMessage("Username must be at least 3 characters long");
+      return;
+    }
+
+    setUsernameStatus('checking');
+    setUsernameMessage("Checking availability...");
+
+    try {
+      const response = await fetch('/api/users/check-username', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username })
+      });
+
+      const data = await response.json();
+
+      if (data.available) {
+        setUsernameStatus('available');
+        setUsernameMessage("Username is available");
+      } else {
+        setUsernameStatus('taken');
+        setUsernameMessage(data.message || "Username is already taken");
+      }
+    } catch (error) {
+      setUsernameStatus('idle');
+      setUsernameMessage("");
+    }
+  };
+
+  // Debounced username checking
+  useEffect(() => {
+    if (!username) {
+      setUsernameStatus('idle');
+      setUsernameMessage("");
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      checkUsernameAvailability(username);
+    }, 500); // 500ms delay
+
+    return () => clearTimeout(timeoutId);
+  }, [username]);
 
   // Check if user is already logged in
   useEffect(() => {
@@ -76,6 +128,13 @@ export default function SignUpPage() {
     if (username.length < 3) {
       toast.error("Username too short", {
         description: "Username must be at least 3 characters long."
+      });
+      return;
+    }
+
+    if (usernameStatus !== 'available') {
+      toast.error("Username not available", {
+        description: usernameMessage || "Please choose a different username."
       });
       return;
     }
@@ -183,7 +242,7 @@ export default function SignUpPage() {
                 className="hover:opacity-80 transition-opacity"
               >
                 <Image 
-                  src={theme === 'dark' ? '/logo-light.png' : '/logo-dark.png'} 
+                  src={resolvedTheme === 'dark' ? '/logo-light.png' : '/logo-dark.png'} 
                   alt="ErrorX Logo" 
                   width={100}
                   height={32}
@@ -244,7 +303,7 @@ export default function SignUpPage() {
                   className="hover:opacity-80 transition-opacity"
                 >
                   <Image 
-                    src={theme === 'dark' ? '/logo-light.png' : '/logo-dark.png'} 
+                    src={resolvedTheme === 'dark' ? '/logo-light.png' : '/logo-dark.png'} 
                     alt="ErrorX Logo" 
                     width={100}
                     height={32}
@@ -302,10 +361,47 @@ export default function SignUpPage() {
                           placeholder="Choose a username"
                           value={username}
                           onChange={(e) => setUsername(e.target.value)}
-                          className="pl-10 h-11"
+                          className={`pl-10 pr-10 h-11 ${
+                            usernameStatus === 'available' ? 'border-green-500 focus:border-green-500' :
+                            usernameStatus === 'taken' || usernameStatus === 'invalid' ? 'border-red-500 focus:border-red-500' :
+                            ''
+                          }`}
                           required
                         />
+                        {usernameStatus === 'checking' && (
+                          <Icon 
+                            icon="lucide:loader-2" 
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" 
+                          />
+                        )}
+                        {usernameStatus === 'available' && (
+                          <Icon 
+                            icon="lucide:check-circle" 
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-green-500" 
+                          />
+                        )}
+                        {usernameStatus === 'taken' && (
+                          <Icon 
+                            icon="lucide:x-circle" 
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-red-500" 
+                          />
+                        )}
+                        {usernameStatus === 'invalid' && (
+                          <Icon 
+                            icon="lucide:alert-circle" 
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-red-500" 
+                          />
+                        )}
                       </div>
+                      {usernameMessage && (
+                        <p className={`text-xs ${
+                          usernameStatus === 'available' ? 'text-green-600' :
+                          usernameStatus === 'taken' || usernameStatus === 'invalid' ? 'text-red-600' :
+                          'text-muted-foreground'
+                        }`}>
+                          {usernameMessage}
+                        </p>
+                      )}
                     </div>
                   </div>
                   

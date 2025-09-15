@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 
 export default function PrivacyPage() {
   const router = useRouter();
-  const { theme } = useTheme();
+  const { theme, resolvedTheme } = useTheme();
 
   return (
     <div className="min-h-screen bg-background">
@@ -23,7 +23,7 @@ export default function PrivacyPage() {
                 className="hover:opacity-80 transition-opacity"
               >
                 <Image 
-                  src={theme === 'dark' ? '/logo-light.png' : '/logo-dark.png'} 
+                  src={resolvedTheme === 'dark' ? '/logo-light.png' : '/logo-dark.png'} 
                   alt="ErrorX Logo" 
                   width={100}
                   height={32}

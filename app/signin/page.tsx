@@ -22,16 +22,16 @@ interface User {
 
 export default function SignInPage() {
   const router = useRouter();
-  const { theme } = useTheme();
+  const { theme, resolvedTheme } = useTheme();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [forgotPassword, setForgotPassword] = useState(false);
-  const [resetEmail, setResetEmail] = useState("");
+  const [resetEmailOrUsername, setResetEmailOrUsername] = useState("");
   const [resetLoading, setResetLoading] = useState(false);
   
   // Form states
-  const [email, setEmail] = useState("");
+  const [emailOrUsername, setEmailOrUsername] = useState("");
   const [password, setPassword] = useState("");
 
   // Check if user is already logged in
@@ -61,7 +61,7 @@ export default function SignInPage() {
 
     try {
       const result = await signIn("credentials", {
-        email,
+        email: emailOrUsername,
         password,
         redirect: false,
       });
@@ -97,7 +97,7 @@ export default function SignInPage() {
       const response = await fetch('/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: resetEmail })
+        body: JSON.stringify({ email: resetEmailOrUsername })
       });
 
       const data = await response.json();
@@ -110,7 +110,7 @@ export default function SignInPage() {
         description: data.message || "Check your email for password reset instructions."
       });
       
-      setResetEmail("");
+      setResetEmailOrUsername("");
       setForgotPassword(false);
     } catch (error: any) {
       toast.error("Failed to send reset email", {
@@ -228,7 +228,7 @@ export default function SignInPage() {
                   className="hover:opacity-80 transition-opacity"
                 >
                   <Image 
-                    src={theme === 'dark' ? '/logo-light.png' : '/logo-dark.png'} 
+                    src={resolvedTheme === 'dark' ? '/logo-light.png' : '/logo-dark.png'} 
                     alt="ErrorX Logo" 
                     width={100}
                     height={32}
@@ -256,18 +256,18 @@ export default function SignInPage() {
               <>
                 <form onSubmit={handleSignIn} className="space-y-4">
                   <div className="space-y-2">
-                        <Label htmlFor="email" className="text-sm font-medium">Email address</Label>
+                        <Label htmlFor="emailOrUsername" className="text-sm font-medium">Email or Username</Label>
                         <div className="relative">
                           <Icon 
-                            icon="lucide:mail" 
+                            icon="lucide:user" 
                             className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" 
                           />
                     <Input
-                      id="email"
-                      type="email"
-                      placeholder="Enter your email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      id="emailOrUsername"
+                      type="text"
+                      placeholder="Enter your email or username"
+                      value={emailOrUsername}
+                      onChange={(e) => setEmailOrUsername(e.target.value)}
                             className="pl-10 h-11"
                       required
                     />
@@ -378,24 +378,24 @@ export default function SignInPage() {
                       </div>
                       <h3 className="text-xl font-semibold">Reset your password</h3>
                       <p className="text-sm text-muted-foreground mt-2">
-                        Enter your email address and we'll send you a reset link
+                        Enter your email address or username and we'll send you a reset link
                       </p>
                     </div>
 
                 <form onSubmit={handleForgotPassword} className="space-y-4">
                   <div className="space-y-2">
-                        <Label htmlFor="resetEmail" className="text-sm font-medium">Email address</Label>
+                        <Label htmlFor="resetEmailOrUsername" className="text-sm font-medium">Email or Username</Label>
                         <div className="relative">
                           <Icon 
-                            icon="lucide:mail" 
+                            icon="lucide:user" 
                             className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" 
                           />
                     <Input
-                      id="resetEmail"
-                      type="email"
-                      placeholder="Enter your email address"
-                      value={resetEmail}
-                      onChange={(e) => setResetEmail(e.target.value)}
+                      id="resetEmailOrUsername"
+                      type="text"
+                      placeholder="Enter your email or username"
+                      value={resetEmailOrUsername}
+                      onChange={(e) => setResetEmailOrUsername(e.target.value)}
                             className="pl-10 h-11"
                       required
                     />

@@ -21,7 +21,54 @@ export async function GET(
     // Increment view count
     await incrementPostViews(id);
 
-    return NextResponse.json(post);
+    // Transform post to hide internal IDs and use custom IDs
+    const cleanPost = {
+      postId: (post as any).postId,
+      title: post.title,
+      content: post.content,
+      categoryId: (post.category as any).categoryId,
+      authorId: (post.author as any).userId,
+      authorUsername: post.authorUsername,
+      isPinned: post.isPinned,
+      isLocked: post.isLocked,
+      views: post.views,
+      likes: post.likes,
+      replies: post.replies,
+      createdAt: post.createdAt,
+      updatedAt: post.updatedAt,
+      author: {
+        userId: (post.author as any).userId,
+        name: post.author.name,
+        username: post.author.username,
+        image: post.author.image
+      },
+      category: {
+        categoryId: (post.category as any).categoryId,
+        name: post.category.name,
+        description: post.category.description,
+        icon: post.category.icon,
+        color: post.category.color
+      },
+      comments: post.comments?.map(comment => ({
+        commentId: (comment as any).commentId,
+        postId: (post as any).postId,
+        authorId: (comment.author as any).userId,
+        authorUsername: comment.authorUsername,
+        content: comment.content,
+        parentId: comment.parentId ? (comment as any).parentId : null,
+        likes: comment.likes,
+        createdAt: comment.createdAt,
+        updatedAt: comment.updatedAt,
+        author: {
+          userId: (comment.author as any).userId,
+          name: comment.author.name,
+          username: comment.author.username,
+          image: comment.author.image
+        }
+      })) || []
+    };
+    
+    return NextResponse.json(cleanPost);
   } catch (error) {
     console.error("Error fetching post:", error);
     return NextResponse.json(
@@ -65,7 +112,38 @@ export async function PUT(
     }
 
     const updatedPost = await updatePost(id, body);
-    return NextResponse.json(updatedPost);
+    
+    // Transform post to hide internal IDs and use custom IDs
+    const cleanPost = {
+      postId: (updatedPost as any).postId,
+      title: updatedPost.title,
+      content: updatedPost.content,
+      categoryId: (updatedPost.category as any).categoryId,
+      authorId: (updatedPost.author as any).userId,
+      authorUsername: updatedPost.authorUsername,
+      isPinned: updatedPost.isPinned,
+      isLocked: updatedPost.isLocked,
+      views: updatedPost.views,
+      likes: updatedPost.likes,
+      replies: updatedPost.replies,
+      createdAt: updatedPost.createdAt,
+      updatedAt: updatedPost.updatedAt,
+      author: {
+        userId: (updatedPost.author as any).userId,
+        name: updatedPost.author.name,
+        username: updatedPost.author.username,
+        image: updatedPost.author.image
+      },
+      category: {
+        categoryId: (updatedPost.category as any).categoryId,
+        name: updatedPost.category.name,
+        description: updatedPost.category.description,
+        icon: updatedPost.category.icon,
+        color: updatedPost.category.color
+      }
+    };
+    
+    return NextResponse.json(cleanPost);
   } catch (error) {
     console.error("Error updating post:", error);
     return NextResponse.json(

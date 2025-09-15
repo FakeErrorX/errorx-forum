@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { getUserProfile, updateUserProfile, createUser } from "../users";
+import { getUserProfile, getUserProfileByCustomId, updateUserProfile, createUser } from "../users";
 import { sendWelcomeEmail } from "@/lib/email";
+import { prisma } from "@/lib/prisma";
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,8 +15,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const userId = (session.user as any).id;
-    const user = await getUserProfile(userId);
+    const customUserId = parseInt((session.user as any).id);
+    const user = await getUserProfileByCustomId(customUserId);
     if (!user) {
       return NextResponse.json(
         { error: "User not found" },
@@ -23,6 +24,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // User data already has internal ID removed and custom userId exposed
     return NextResponse.json(user);
   } catch (error) {
     console.error("Error fetching user:", error);
@@ -43,11 +45,33 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const userId = (session.user as any).id;
+    const customUserId = parseInt((session.user as any).id);
     const body = await request.json();
     const { name, username, bio, image, preferences } = body;
 
-    const updatedUser = await updateUserProfile(userId, {
+    // First get the user to find their internal ID
+    const user = await getUserProfileByCustomId(customUserId);
+    if (!user) {
+      return NextResponse.json(
+        { error: "User not found" },
+        { status: 404 }
+      );
+    }
+
+    // Find the internal ID by searching for the user with this custom userId
+    const userWithInternalId = await prisma.user.findUnique({
+      where: { userId: customUserId } as any,
+      select: { id: true }
+    });
+
+    if (!userWithInternalId) {
+      return NextResponse.json(
+        { error: "User not found" },
+        { status: 404 }
+      );
+    }
+
+    const updatedUser = await updateUserProfile(userWithInternalId.id, {
       name,
       username,
       bio,
@@ -55,6 +79,14 @@ export async function PUT(request: NextRequest) {
       preferences,
     });
 
+    if (!updatedUser) {
+      return NextResponse.json(
+        { error: "User not found" },
+        { status: 404 }
+      );
+    }
+
+    // User data already has internal ID removed and custom userId exposed
     return NextResponse.json(updatedUser);
   } catch (error) {
     console.error("Error updating user:", error);
@@ -107,6 +139,7 @@ export async function POST(request: NextRequest) {
       console.error('Failed to send welcome email:', error);
     });
 
+    // User data already has internal ID removed and custom userId exposed
     return NextResponse.json(user, { status: 201 });
   } catch (error) {
     console.error("Error creating user:", error);

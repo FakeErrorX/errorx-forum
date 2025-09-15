@@ -2,11 +2,12 @@ import { prisma } from "@/lib/prisma"
 
 // Types for forum data
 export interface ForumPost {
-  id: string;
+  id: string; // Internal database ID (hidden from API)
+  postId: number; // Custom sequential post ID (exposed in API)
   title: string;
   content: string;
-  categoryId: string;
-  authorId: string;
+  categoryId: string; // Internal database ID (hidden from API)
+  authorId: string; // Internal database ID (hidden from API)
   authorUsername: string;
   isPinned: boolean;
   isLocked: boolean;
@@ -18,7 +19,8 @@ export interface ForumPost {
 }
 
 export interface ForumCategory {
-  id: string;
+  id: string; // Internal database ID (hidden from API)
+  categoryId: number; // Custom sequential category ID (exposed in API)
   name: string;
   description: string | null;
   icon: string | null;
@@ -30,12 +32,13 @@ export interface ForumCategory {
 }
 
 export interface ForumComment {
-  id: string;
-  postId: string;
-  authorId: string;
+  id: string; // Internal database ID (hidden from API)
+  commentId: number; // Custom sequential comment ID (exposed in API)
+  postId: string; // Internal database ID (hidden from API)
+  authorId: string; // Internal database ID (hidden from API)
   authorUsername: string;
   content: string;
-  parentId: string | null;
+  parentId: string | null; // Internal database ID (hidden from API)
   likes: number;
   createdAt: Date;
   updatedAt: Date;
@@ -44,7 +47,7 @@ export interface ForumComment {
 // Database Service Functions
 
 // POSTS
-export const createPost = async (postData: Omit<ForumPost, 'id' | 'createdAt' | 'updatedAt'>) => {
+export const createPost = async (postData: Omit<ForumPost, 'id' | 'postId' | 'createdAt' | 'updatedAt'>) => {
   try {
     const post = await prisma.post.create({
       data: {
@@ -193,7 +196,7 @@ export const getCategories = async () => {
   }
 };
 
-export const createCategory = async (categoryData: Omit<ForumCategory, 'id' | 'createdAt' | 'updatedAt'>) => {
+export const createCategory = async (categoryData: Omit<ForumCategory, 'id' | 'categoryId' | 'createdAt' | 'updatedAt'>) => {
   try {
     const category = await prisma.category.create({
       data: {
@@ -213,7 +216,7 @@ export const createCategory = async (categoryData: Omit<ForumCategory, 'id' | 'c
 };
 
 // COMMENTS
-export const createComment = async (commentData: Omit<ForumComment, 'id' | 'createdAt' | 'updatedAt'>) => {
+export const createComment = async (commentData: Omit<ForumComment, 'id' | 'commentId' | 'createdAt' | 'updatedAt'>) => {
   try {
     const comment = await prisma.comment.create({
       data: {

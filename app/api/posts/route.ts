@@ -20,7 +20,37 @@ export async function GET(request: NextRequest) {
       posts = await getPosts(limit, offset, categoryId, authorId);
     }
     
-    return NextResponse.json(posts);
+    // Transform posts to hide internal IDs and use custom IDs
+    const cleanPosts = posts.map(post => ({
+      postId: (post as any).postId,
+      title: post.title,
+      content: post.content,
+      categoryId: (post.category as any).categoryId,
+      authorId: (post.author as any).userId,
+      authorUsername: post.authorUsername,
+      isPinned: post.isPinned,
+      isLocked: post.isLocked,
+      views: post.views,
+      likes: post.likes,
+      replies: post.replies,
+      createdAt: post.createdAt,
+      updatedAt: post.updatedAt,
+      author: {
+        userId: (post.author as any).userId,
+        name: post.author.name,
+        username: post.author.username,
+        image: post.author.image
+      },
+      category: {
+        categoryId: (post.category as any).categoryId,
+        name: post.category.name,
+        description: post.category.description,
+        icon: post.category.icon,
+        color: post.category.color
+      }
+    }));
+    
+    return NextResponse.json(cleanPosts);
   } catch (error) {
     console.error("Error fetching posts:", error);
     return NextResponse.json(
@@ -74,7 +104,37 @@ export async function POST(request: NextRequest) {
       replies: 0,
     });
 
-    return NextResponse.json(post, { status: 201 });
+    // Transform post to hide internal IDs and use custom IDs
+    const cleanPost = {
+      postId: (post as any).postId,
+      title: post.title,
+      content: post.content,
+      categoryId: (post.category as any).categoryId,
+      authorId: (post.author as any).userId,
+      authorUsername: post.authorUsername,
+      isPinned: post.isPinned,
+      isLocked: post.isLocked,
+      views: post.views,
+      likes: post.likes,
+      replies: post.replies,
+      createdAt: post.createdAt,
+      updatedAt: post.updatedAt,
+      author: {
+        userId: (post.author as any).userId,
+        name: post.author.name,
+        username: post.author.username,
+        image: post.author.image
+      },
+      category: {
+        categoryId: (post.category as any).categoryId,
+        name: post.category.name,
+        description: post.category.description,
+        icon: post.category.icon,
+        color: post.category.color
+      }
+    };
+    
+    return NextResponse.json(cleanPost, { status: 201 });
   } catch (error) {
     console.error("Error creating post:", error);
     return NextResponse.json(

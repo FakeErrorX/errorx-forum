@@ -17,7 +17,27 @@ export async function GET(request: NextRequest) {
     }
 
     const comments = await getCommentsByPost(postId, limit);
-    return NextResponse.json(comments);
+    
+    // Transform comments to hide internal IDs and use custom IDs
+    const cleanComments = comments.map(comment => ({
+      commentId: (comment as any).commentId,
+      postId: (comment as any).postId,
+      authorId: (comment.author as any).userId,
+      authorUsername: comment.authorUsername,
+      content: comment.content,
+      parentId: comment.parentId ? (comment as any).parentId : null,
+      likes: comment.likes,
+      createdAt: comment.createdAt,
+      updatedAt: comment.updatedAt,
+      author: {
+        userId: (comment.author as any).userId,
+        name: comment.author.name,
+        username: comment.author.username,
+        image: comment.author.image
+      }
+    }));
+    
+    return NextResponse.json(cleanComments);
   } catch (error) {
     console.error("Error fetching comments:", error);
     return NextResponse.json(
@@ -67,7 +87,26 @@ export async function POST(request: NextRequest) {
       likes: 0,
     });
 
-    return NextResponse.json(comment, { status: 201 });
+    // Transform comment to hide internal IDs and use custom IDs
+    const cleanComment = {
+      commentId: (comment as any).commentId,
+      postId: (comment as any).postId,
+      authorId: (comment.author as any).userId,
+      authorUsername: comment.authorUsername,
+      content: comment.content,
+      parentId: comment.parentId ? (comment as any).parentId : null,
+      likes: comment.likes,
+      createdAt: comment.createdAt,
+      updatedAt: comment.updatedAt,
+      author: {
+        userId: (comment.author as any).userId,
+        name: comment.author.name,
+        username: comment.author.username,
+        image: comment.author.image
+      }
+    };
+    
+    return NextResponse.json(cleanComment, { status: 201 });
   } catch (error) {
     console.error("Error creating comment:", error);
     return NextResponse.json(

@@ -24,10 +24,10 @@ export async function GET(
         }
       },
       select: {
-        id: true,
+        id: true, // Internal ID needed for posts query
+        userId: true,
         name: true,
         username: true,
-        email: true,
         image: true,
         bio: true,
         postCount: true,
@@ -35,7 +35,7 @@ export async function GET(
         isActive: true,
         createdAt: true,
         updatedAt: true,
-        // Don't include sensitive data like password, preferences, etc.
+        // Don't include sensitive data like password, preferences, email, etc.
       }
     });
 
@@ -46,7 +46,9 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(user);
+    // Remove internal ID from response, only expose custom userId
+    const { id, ...publicUser } = user;
+    return NextResponse.json(publicUser);
   } catch (error) {
     console.error("Error fetching user by username:", error);
     return NextResponse.json(

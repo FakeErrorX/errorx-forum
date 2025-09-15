@@ -15,12 +15,11 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { Icon } from '@iconify/react';
 
 interface User {
-  id: string;
+  userId: number; // Custom sequential user ID
   name: string | null;
   username: string | null;
   email: string;
@@ -207,28 +206,6 @@ export default function SettingsPage() {
     }
   };
 
-  const handleDeleteAccount = async () => {
-    setSaving(true);
-    setError("");
-
-    try {
-      const response = await fetch('/api/users', {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        toast.success("Account deleted successfully");
-        await signOut({ callbackUrl: "/" });
-      } else {
-        const errorData = await response.json();
-        setError(errorData.error || "Failed to delete account");
-      }
-    } catch (error) {
-      setError("Failed to delete account. Please try again.");
-    } finally {
-      setSaving(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -279,11 +256,10 @@ export default function SettingsPage() {
 
         {/* Settings Tabs */}
         <Tabs defaultValue="account" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="account">Account</TabsTrigger>
             <TabsTrigger value="preferences">Preferences</TabsTrigger>
             <TabsTrigger value="security">Security</TabsTrigger>
-            <TabsTrigger value="danger">Danger Zone</TabsTrigger>
           </TabsList>
 
           {/* Account Settings */}
@@ -560,52 +536,6 @@ export default function SettingsPage() {
             </Card>
           </TabsContent>
 
-          {/* Danger Zone */}
-          <TabsContent value="danger" className="space-y-6">
-            <Card className="border-destructive">
-              <CardHeader>
-                <CardTitle className="text-destructive">Danger Zone</CardTitle>
-                <CardDescription>
-                  Irreversible and destructive actions
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="p-4 border border-destructive rounded-lg">
-                  <h4 className="font-medium text-destructive mb-2">Delete Account</h4>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Once you delete your account, there is no going back. This will permanently delete your profile, posts, and all associated data.
-                  </p>
-                  
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="destructive">
-                        <Icon icon="lucide:trash-2" className="h-4 w-4 mr-2" />
-                        Delete Account
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This action cannot be undone. This will permanently delete your account
-                          and remove all your data from our servers.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={handleDeleteAccount}
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                          Yes, delete my account
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
         </Tabs>
       </div>
     </div>

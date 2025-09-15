@@ -14,10 +14,9 @@ import { Icon } from '@iconify/react';
 import { ModeToggle } from "@/components/mode-toggle";
 
 interface Member {
-  id: string;
+  userId: number; // Custom sequential user ID (only public ID)
   name: string | null;
   username: string | null;
-  email: string;
   image: string | null;
   bio: string | null;
   location: string | null;
@@ -31,7 +30,7 @@ interface Member {
 export default function MembersPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
-  const { theme } = useTheme();
+  const { theme, resolvedTheme } = useTheme();
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -41,7 +40,7 @@ export default function MembersPage() {
   // Load members data
   const loadMembers = async () => {
     try {
-      const response = await fetch('/api/users');
+      const response = await fetch('/api/members');
       if (response.ok) {
         const membersData = await response.json();
         // Ensure membersData is an array
@@ -94,9 +93,8 @@ export default function MembersPage() {
   }, [members, searchQuery, sortBy]);
 
   useEffect(() => {
-    if (status === "loading") return;
     loadMembers();
-  }, [status]);
+  }, []);
 
   const formatDate = (date: string) => {
     return new Date(date).toLocaleDateString('en-US', {
@@ -132,7 +130,7 @@ export default function MembersPage() {
                   className="hover:opacity-80 transition-opacity"
                 >
                   <Image 
-                    src={theme === 'dark' ? '/logo-light.png' : '/logo-dark.png'} 
+                    src={resolvedTheme === 'dark' ? '/logo-light.png' : '/logo-dark.png'} 
                     alt="ErrorX Logo" 
                     width={100}
                     height={32}
@@ -196,7 +194,15 @@ export default function MembersPage() {
           {/* Members Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {Array.isArray(filteredMembers) && filteredMembers.map((member) => (
-              <Card key={member.id} className="hover:shadow-lg transition-shadow cursor-pointer">
+              <Card 
+                key={member.userId} 
+                className="hover:shadow-lg transition-shadow cursor-pointer"
+                onClick={() => {
+                  if (member.username) {
+                    router.push(`/${member.username}`);
+                  }
+                }}
+              >
                 <CardContent className="p-6">
                   <div className="flex flex-col items-center text-center space-y-4">
                     {/* Avatar */}
@@ -217,6 +223,9 @@ export default function MembersPage() {
                           @{member.username}
                         </p>
                       )}
+                       <Badge variant="outline" className="text-xs font-mono bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-green-500/20 text-green-600 dark:text-green-400 w-fit px-2 py-1">
+                         User ID: {member.userId}
+                       </Badge>
                       {member.bio && (
                         <p className="text-sm text-muted-foreground line-clamp-2">
                           {member.bio}
@@ -240,7 +249,7 @@ export default function MembersPage() {
                       </div>
                     </div>
 
-                    {/* Location */}
+                    {/* Location - Not available in current schema */}
                     {member.location && (
                       <div className="flex items-center space-x-1 text-sm text-muted-foreground">
                         <Icon icon="lucide:map-pin" className="h-4 w-4" />
@@ -248,7 +257,7 @@ export default function MembersPage() {
                       </div>
                     )}
 
-                    {/* Website */}
+                    {/* Website - Not available in current schema */}
                     {member.website && (
                       <div className="flex items-center space-x-1 text-sm">
                         <Icon icon="lucide:globe" className="h-4 w-4" />

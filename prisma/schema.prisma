@@ -41,6 +41,7 @@ model Session {
 
 model User {
   id            String    @id @default(cuid())
+  userId        Int       @unique @default(autoincrement()) // Custom sequential user ID
   name          String?
   username      String?   @unique
   email         String    @unique
@@ -80,6 +81,7 @@ model VerificationToken {
 // Forum models
 model Category {
   id          String   @id @default(cuid())
+  categoryId  Int      @unique @default(autoincrement()) // Custom sequential category ID
   name        String
   description String?
   icon        String?
@@ -95,6 +97,7 @@ model Category {
 
 model Post {
   id              String   @id @default(cuid())
+  postId          Int      @unique @default(autoincrement()) // Custom sequential post ID
   title           String
   content         String   @db.Text
   categoryId      String
@@ -117,6 +120,7 @@ model Post {
 
 model Comment {
   id              String   @id @default(cuid())
+  commentId       Int      @unique @default(autoincrement()) // Custom sequential comment ID
   postId          String
   authorId        String
   authorUsername  String   // Store username for faster queries
@@ -136,6 +140,7 @@ model Comment {
 
 model Like {
   id        String   @id @default(cuid())
+  likeId    Int      @unique @default(autoincrement()) // Custom sequential like ID
   userId    String
   postId    String?
   commentId String?

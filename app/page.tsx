@@ -25,13 +25,13 @@ import { ModeToggle } from "@/components/mode-toggle";
 interface User {
   name: string;
   email: string;
-  id: string;
+  userId: number; // Custom sequential user ID
   image?: string | null;
   username?: string | null;
 }
 
 interface ForumCategory {
-  id: string;
+  categoryId: number; // Custom sequential category ID
   name: string;
   description: string | null;
   icon: string | null;
@@ -43,11 +43,11 @@ interface ForumCategory {
 }
 
 interface ForumPost {
-  id: string;
+  postId: number; // Custom sequential post ID
   title: string;
   content: string;
-  categoryId: string;
-  authorId: string;
+  categoryId: number; // Custom sequential category ID
+  authorId: number; // Custom sequential user ID
   authorUsername: string;
   isPinned: boolean;
   isLocked: boolean;
@@ -56,12 +56,25 @@ interface ForumPost {
   replies: number;
   createdAt: string; // API returns dates as strings
   updatedAt: string;
+  author: {
+    userId: number;
+    name: string | null;
+    username: string | null;
+    image: string | null;
+  };
+  category: {
+    categoryId: number;
+    name: string;
+    description: string | null;
+    icon: string | null;
+    color: string | null;
+  };
 }
 
 export default function HomePage() {
   const router = useRouter();
   const { data: session, status } = useSession();
-  const { theme } = useTheme();
+  const { theme, resolvedTheme } = useTheme();
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [categories, setCategories] = useState<ForumCategory[]>([]);
@@ -136,8 +149,8 @@ export default function HomePage() {
     return `${Math.floor(diffInSeconds / 86400)} days ago`;
   };
 
-  const getCategoryById = (categoryId: string) => {
-    return categories.find(cat => cat.id === categoryId);
+  const getCategoryById = (categoryId: number) => {
+    return categories.find(cat => cat.categoryId === categoryId);
   };
 
   useEffect(() => {
@@ -189,7 +202,7 @@ export default function HomePage() {
                   className="hover:opacity-80 transition-opacity"
                 >
                   <Image 
-                    src={theme === 'dark' ? '/logo-light.png' : '/logo-dark.png'} 
+                    src={resolvedTheme === 'dark' ? '/logo-light.png' : '/logo-dark.png'} 
                     alt="ErrorX Logo" 
                     width={100}
                     height={32}
@@ -291,7 +304,7 @@ export default function HomePage() {
               <CardContent className="space-y-4">
                 {categories.length > 0 ? (
                   categories.map((category) => (
-                    <div key={category.id} className="p-4 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors">
+                    <div key={category.categoryId} className="p-4 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors">
                       <div className="flex items-start space-x-3">
                         <div className="text-muted-foreground mt-0.5">
                           <Icon icon={category.icon || "lucide:folder"} className="h-5 w-5" style={{ color: category.color || "#666" }} />
@@ -345,7 +358,7 @@ export default function HomePage() {
                   (isSearching ? searchResults : posts).map((post) => {
                     const category = getCategoryById(post.categoryId);
                     return (
-                      <Card key={post.id} className="hover:shadow-md transition-shadow">
+                      <Card key={post.postId} className="hover:shadow-md transition-shadow">
                         <CardContent className="p-6">
                           <div className="flex items-start space-x-4">
                             <Avatar className="h-10 w-10">
@@ -410,7 +423,7 @@ export default function HomePage() {
                   posts.filter(post => post.isPinned).map((post) => {
                     const category = getCategoryById(post.categoryId);
                     return (
-                      <Card key={post.id} className="hover:shadow-md transition-shadow">
+                      <Card key={post.postId} className="hover:shadow-md transition-shadow">
                         <CardContent className="p-6">
                           <div className="flex items-start space-x-4">
                             <Avatar className="h-10 w-10">

@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { useTheme } from "next-themes";
+import Image from "next/image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,10 +14,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Icon } from '@iconify/react';
 
 interface PublicUser {
-  id: string;
+  userId: number; // Custom sequential user ID (only public ID)
   name: string | null;
   username: string | null;
-  email: string;
   image: string | null;
   bio: string | null;
   postCount: number;
@@ -26,11 +27,11 @@ interface PublicUser {
 }
 
 interface UserPost {
-  id: string;
+  postId: number; // Custom sequential post ID
   title: string;
   content: string;
-  categoryId: string;
-  authorId: string;
+  categoryId: number; // Custom sequential category ID
+  authorId: number; // Custom sequential user ID
   authorUsername: string;
   isPinned: boolean;
   isLocked: boolean;
@@ -39,12 +40,20 @@ interface UserPost {
   replies: number;
   createdAt: string;
   updatedAt: string;
+  category: {
+    categoryId: number;
+    name: string;
+    description: string | null;
+    icon: string | null;
+    color: string | null;
+  };
 }
 
 export default function PublicProfilePage() {
   const params = useParams();
   const router = useRouter();
   const { data: session } = useSession();
+  const { theme, resolvedTheme } = useTheme();
   const [user, setUser] = useState<PublicUser | null>(null);
   const [posts, setPosts] = useState<UserPost[]>([]);
   const [loading, setLoading] = useState(true);
@@ -161,19 +170,46 @@ export default function PublicProfilePage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="bg-background border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-3">
+                <button 
+                  onClick={() => router.push("/")}
+                  className="hover:opacity-80 transition-opacity"
+                >
+                  <Image 
+                    src={resolvedTheme === 'dark' ? '/logo-light.png' : '/logo-dark.png'} 
+                    alt="ErrorX Logo" 
+                    width={100}
+                    height={32}
+                    className="h-8 w-auto"
+                  />
+                </button>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              <Button variant="outline" onClick={() => router.back()}>
+                <Icon icon="lucide:arrow-left" className="h-4 w-4 mr-2" />
+                Back
+              </Button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="container mx-auto px-4 py-8 max-w-4xl">
+        <div className="space-y-6">
+          {/* Profile Header */}
+          <div className="text-center">
             <h1 className="text-3xl font-bold">Public Profile</h1>
             <p className="text-muted-foreground">Viewing @{user.username}'s profile</p>
           </div>
-          <Button variant="outline" onClick={() => router.back()}>
-            <Icon icon="lucide:arrow-left" className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-        </div>
 
         {/* Profile Header */}
         <Card>
@@ -190,6 +226,9 @@ export default function PublicProfilePage() {
                 <div className="flex items-center space-x-4 mb-2">
                   <h2 className="text-3xl font-bold text-foreground">{user.name || "Anonymous"}</h2>
                   <Badge variant="secondary">@{user.username}</Badge>
+                  <Badge variant="secondary" className="text-xs font-mono">
+                    User ID: {user.userId}
+                  </Badge>
                   <Badge variant={user.isActive ? "default" : "secondary"}>
                     {user.isActive ? "Active" : "Inactive"}
                   </Badge>
@@ -249,7 +288,7 @@ export default function PublicProfilePage() {
             ) : (
               <div className="space-y-4">
                 {posts.map((post) => (
-                  <Card key={post.id} className="hover:shadow-md transition-shadow">
+                  <Card key={post.postId} className="hover:shadow-md transition-shadow">
                     <CardHeader>
                       <div className="flex items-start justify-between">
                         <div className="flex-1 min-w-0">
@@ -336,7 +375,8 @@ export default function PublicProfilePage() {
             </Card>
           </TabsContent>
         </Tabs>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

@@ -13,7 +13,7 @@ import Image from "next/image";
 
 function ResetPasswordForm() {
   const router = useRouter();
-  const { theme } = useTheme();
+  const { theme, resolvedTheme } = useTheme();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -125,7 +125,7 @@ function ResetPasswordForm() {
                 className="hover:opacity-80 transition-opacity"
               >
                 <Image 
-                  src={theme === 'dark' ? '/logo-light.png' : '/logo-dark.png'} 
+                  src={resolvedTheme === 'dark' ? '/logo-light.png' : '/logo-dark.png'} 
                   alt="ErrorX Logo" 
                   width={100}
                   height={32}
@@ -186,7 +186,7 @@ function ResetPasswordForm() {
                   className="hover:opacity-80 transition-opacity"
                 >
                   <Image 
-                    src={theme === 'dark' ? '/logo-light.png' : '/logo-dark.png'} 
+                    src={resolvedTheme === 'dark' ? '/logo-light.png' : '/logo-dark.png'} 
                     alt="ErrorX Logo" 
                     width={100}
                     height={32}

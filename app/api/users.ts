@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 
 export interface UserProfile {
-  id: string;
+  userId: number; // Custom sequential user ID (only public ID)
   name: string | null;
   username: string | null;
   email: string;
@@ -56,14 +56,15 @@ export async function createUser(userData: CreateUserData): Promise<UserProfile>
       }
     });
 
+    const { id, ...userWithoutId } = userProfile;
     return {
-      ...userProfile,
+      ...userWithoutId,
       preferences: userProfile.preferences as {
         theme: 'light' | 'dark' | 'system';
         notifications: boolean;
         emailUpdates: boolean;
       }
-    } as UserProfile;
+    } as any as UserProfile;
   } catch (error) {
     console.error('Error creating user profile:', error);
     throw new Error(`Failed to create user profile: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -76,23 +77,79 @@ export async function createUser(userData: CreateUserData): Promise<UserProfile>
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
   try {
     const user = await prisma.user.findUnique({
-      where: { id: userId }
+      where: { id: userId },
+      select: {
+        id: true,
+        userId: true as any,
+        name: true,
+        username: true,
+        email: true,
+        image: true,
+        bio: true,
+        postCount: true,
+        reputation: true,
+        isActive: true,
+        preferences: true,
+        createdAt: true,
+        updatedAt: true
+      } as any as any
     });
 
     if (!user) {
       return null;
     }
 
+    const { id, ...userWithoutId } = user;
     return {
-      ...user,
-      preferences: user.preferences as {
+      ...userWithoutId,
+      preferences: ((user as any).preferences || {}) as {
         theme: 'light' | 'dark' | 'system';
         notifications: boolean;
         emailUpdates: boolean;
       }
-    } as UserProfile;
+    } as any as UserProfile;
   } catch (error) {
     console.error('Error getting user profile:', error);
+    return null;
+  }
+}
+
+export async function getUserProfileByCustomId(customUserId: number): Promise<UserProfile | null> {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { userId: customUserId } as any,
+      select: {
+        id: true,
+        userId: true as any,
+        name: true,
+        username: true,
+        email: true,
+        image: true,
+        bio: true,
+        postCount: true,
+        reputation: true,
+        isActive: true,
+        preferences: true,
+        createdAt: true,
+        updatedAt: true
+      } as any as any
+    });
+
+    if (!user) {
+      return null;
+    }
+
+    const { id, ...userWithoutId } = user;
+    return {
+      ...userWithoutId,
+      preferences: ((user as any).preferences || {}) as {
+        theme: 'light' | 'dark' | 'system';
+        notifications: boolean;
+        emailUpdates: boolean;
+      }
+    } as any as UserProfile;
+  } catch (error) {
+    console.error('Error getting user profile by custom ID:', error);
     return null;
   }
 }
@@ -103,21 +160,37 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
 export async function getUserByEmail(email: string): Promise<UserProfile | null> {
   try {
     const user = await prisma.user.findUnique({
-      where: { email }
+      where: { email },
+      select: {
+        id: true,
+        userId: true as any,
+        name: true,
+        username: true,
+        email: true,
+        image: true,
+        bio: true,
+        postCount: true,
+        reputation: true,
+        isActive: true,
+        preferences: true,
+        createdAt: true,
+        updatedAt: true
+      } as any
     });
 
     if (!user) {
       return null;
     }
 
+    const { id, ...userWithoutId } = user;
     return {
-      ...user,
-      preferences: user.preferences as {
+      ...userWithoutId,
+      preferences: ((user as any).preferences || {}) as {
         theme: 'light' | 'dark' | 'system';
         notifications: boolean;
         emailUpdates: boolean;
       }
-    } as UserProfile;
+    } as any as UserProfile;
   } catch (error) {
     console.error('Error getting user by email:', error);
     return null;
@@ -134,17 +207,33 @@ export async function updateUserProfile(
   try {
     const result = await prisma.user.update({
       where: { id: userId },
-      data: updates
+      data: updates,
+      select: {
+        id: true,
+        userId: true as any,
+        name: true,
+        username: true,
+        email: true,
+        image: true,
+        bio: true,
+        postCount: true,
+        reputation: true,
+        isActive: true,
+        preferences: true,
+        createdAt: true,
+        updatedAt: true
+      } as any
     });
 
+    const { id, ...userWithoutId } = result;
     return {
-      ...result,
-      preferences: result.preferences as {
+      ...userWithoutId,
+      preferences: ((result as any).preferences || {}) as {
         theme: 'light' | 'dark' | 'system';
         notifications: boolean;
         emailUpdates: boolean;
       }
-    } as UserProfile;
+    } as any as UserProfile;
   } catch (error) {
     console.error('Error updating user profile:', error);
     throw new Error('Failed to update user profile');
@@ -234,27 +323,44 @@ export async function updateUserReputation(userId: string, reputationChange: num
 export async function verifyPassword(email: string, password: string): Promise<UserProfile | null> {
   try {
     const user = await prisma.user.findUnique({
-      where: { email }
+      where: { email },
+      select: {
+        id: true,
+        userId: true as any,
+        name: true,
+        username: true,
+        email: true,
+        image: true,
+        bio: true,
+        postCount: true,
+        reputation: true,
+        isActive: true,
+        preferences: true,
+        createdAt: true,
+        updatedAt: true,
+        password: true
+      } as any
     });
 
-    if (!user || !user.password) {
+    if (!user || !(user as any).password) {
       return null;
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = await bcrypt.compare(password, (user as any).password);
     
     if (!isPasswordValid) {
       return null;
     }
 
+    const { id, password: _, ...userWithoutId } = user;
     return {
-      ...user,
-      preferences: user.preferences as {
+      ...userWithoutId,
+      preferences: ((user as any).preferences || {}) as {
         theme: 'light' | 'dark' | 'system';
         notifications: boolean;
         emailUpdates: boolean;
       }
-    } as UserProfile;
+    } as any as UserProfile;
   } catch (error) {
     console.error('Error verifying password:', error);
     return null;

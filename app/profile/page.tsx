@@ -19,7 +19,7 @@ import { toast } from "sonner";
 import { extractKeyFromUrl } from "@/lib/s3";
 
 interface User {
-  id: string;
+  userId: number; // Custom sequential user ID
   name: string | null;
   username: string | null;
   email: string;
@@ -56,7 +56,7 @@ interface UserPost {
 export default function ProfilePage() {
   const router = useRouter();
   const { data: session, status } = useSession();
-  const { theme } = useTheme();
+  const { theme, resolvedTheme } = useTheme();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
@@ -362,7 +362,7 @@ export default function ProfilePage() {
                   className="hover:opacity-80 transition-opacity"
                 >
                   <Image 
-                    src={theme === 'dark' ? '/logo-light.png' : '/logo-dark.png'} 
+                    src={resolvedTheme === 'dark' ? '/logo-light.png' : '/logo-dark.png'} 
                     alt="ErrorX Logo" 
                     width={100}
                     height={32}
@@ -408,6 +408,9 @@ export default function ProfilePage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center space-x-4 mb-2">
                         <Badge variant="secondary">Member</Badge>
+                        <Badge variant="secondary" className="text-xs font-mono">
+                          User ID: {user.userId}
+                        </Badge>
                       </div>
                       
                       <div className="space-y-2">

@@ -9,21 +9,38 @@ export async function POST(request: NextRequest) {
 
     if (!email) {
       return NextResponse.json(
-        { error: "Email is required" },
+        { error: "Email or username is required" },
         { status: 400 }
       );
     }
 
-    // Check if user exists
-    const user = await prisma.user.findUnique({
-      where: { email },
-      select: { id: true, email: true, name: true }
-    });
+    // Check if the input is an email or username
+    const isEmail = email.includes('@')
+    
+    let user = null
+    if (isEmail) {
+      // Search by email
+      user = await prisma.user.findUnique({
+        where: { email },
+        select: { id: true, email: true, name: true }
+      })
+    } else {
+      // Search by username (case-insensitive)
+      user = await prisma.user.findFirst({
+        where: {
+          username: {
+            equals: email,
+            mode: 'insensitive'
+          }
+        },
+        select: { id: true, email: true, name: true }
+      })
+    }
 
     if (!user) {
       // Don't reveal if user exists or not for security
       return NextResponse.json(
-        { message: "If an account with that email exists, we've sent a password reset link." },
+        { message: "If an account with that email or username exists, we've sent a password reset link." },
         { status: 200 }
       );
     }
@@ -59,7 +76,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       { 
-        message: "If an account with that email exists, we've sent a password reset link.",
+        message: "If an account with that email or username exists, we've sent a password reset link.",
         // Only include this in development
         ...(process.env.NODE_ENV === 'development' && { resetLink })
       },

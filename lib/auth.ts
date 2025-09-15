@@ -12,7 +12,7 @@ export const authOptions: NextAuthOptions = {
     CredentialsProvider({
       name: "credentials",
       credentials: {
-        email: { label: "Email", type: "email" },
+        email: { label: "Email or Username", type: "text" },
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
@@ -20,19 +20,34 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
-        const user = await prisma.user.findUnique({
-          where: {
-            email: credentials.email
-          }
-        })
+        // Check if the input is an email or username
+        const isEmail = credentials.email.includes('@')
+        
+        let user = null
+        if (isEmail) {
+          // Search by email
+          user = await prisma.user.findUnique({
+            where: {
+              email: credentials.email
+            }
+          })
+        } else {
+          // Search by username (case-insensitive)
+          user = await prisma.user.findFirst({
+            where: {
+              username: {
+                equals: credentials.email,
+                mode: 'insensitive'
+              }
+            }
+          })
+        }
 
         if (!user) {
           return null
         }
 
-        // For now, we'll assume password is stored in a separate field
-        // In a real app, you'd store hashed passwords in the database
-        // This is a simplified version for the migration
+        // Check password
         const isPasswordValid = await bcrypt.compare(credentials.password, user.password || "")
         
         if (!isPasswordValid) {
@@ -40,7 +55,7 @@ export const authOptions: NextAuthOptions = {
         }
 
         return {
-          id: user.id,
+          id: (user as any).userId.toString(), // Use custom userId as the session ID
           email: user.email,
           name: user.name,
           image: user.image,
@@ -60,15 +75,30 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt",
   },
   callbacks: {
+    async signIn({ user, account, profile }) {
+      // For OAuth providers, we need to get the user's custom userId
+      if (account?.provider === "google" || account?.provider === "github") {
+        const dbUser = await prisma.user.findUnique({
+          where: { email: user.email! },
+          select: { userId: true } as any
+        });
+        if (dbUser) {
+          user.id = (dbUser as any).userId.toString();
+        }
+      }
+      return true;
+    },
     async jwt({ token, user }) {
       if (user) {
-        token.id = user.id
+        token.id = user.id // This will be our custom userId
+        token.userId = user.id // Store as userId for clarity
       }
       return token
     },
     async session({ session, token }) {
       if (token && session.user) {
-        (session.user as any).id = token.id as string
+        (session.user as any).id = token.id as string // Custom userId
+        (session.user as any).userId = token.userId as string // Also expose as userId
       }
       return session
     },
