@@ -4,6 +4,25 @@ import { validateOrigin, createSecureErrorResponse } from './lib/api-security';
 export function middleware(request: NextRequest) {
   // Only apply to API routes
   if (request.nextUrl.pathname.startsWith('/api/')) {
+    // Block direct browser navigations to API endpoints (avoid exposing JSON in browser)
+    const secFetchMode = request.headers.get('sec-fetch-mode');
+    const secFetchDest = request.headers.get('sec-fetch-dest');
+    const acceptHeader = request.headers.get('accept') || '';
+    const isNavigation =
+      secFetchMode === 'navigate' ||
+      secFetchDest === 'document' ||
+      acceptHeader.includes('text/html');
+
+    if (isNavigation && request.method === 'GET') {
+      return new NextResponse('ErrorX', {
+        status: 404,
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'X-Robots-Tag': 'noindex, nofollow'
+        }
+      });
+    }
+
     // Validate the request origin
     if (!validateOrigin(request)) {
       return createSecureErrorResponse(
