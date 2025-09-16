@@ -5,6 +5,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthSessionProvider } from "@/components/session-provider";
+import { GoogleAnalyticsComponent } from "@/components/analytics/google-analytics";
 import { defaultSEO } from "@/lib/seo";
 
 // Validate required environment variables
@@ -111,6 +112,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
             <Toaster />
           </ThemeProvider>
         </AuthSessionProvider>
+        <GoogleAnalyticsComponent gaId={process.env.NEXT_PUBLIC_GA_ID || ''} />
       </body>
     </html>
   );
