@@ -146,7 +146,7 @@ export async function fileExists(key: string): Promise<boolean> {
 }
 
 // Get file metadata
-export async function getFileMetadata(key: string): Promise<{ success: boolean; metadata?: any; error?: string }> {
+export async function getFileMetadata(key: string): Promise<{ success: boolean; metadata?: Record<string, unknown>; error?: string }> {
   try {
     const command = new HeadObjectCommand({
       Bucket: BUCKET_NAME,

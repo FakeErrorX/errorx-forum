@@ -39,12 +39,13 @@ export default function CreatePostPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
   const [categories, setCategories] = useState<ForumCategory[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [selectedCategoryId, setSelectedCategoryId] = useState("");
 
   // Form validation
   const {
@@ -118,27 +119,8 @@ export default function CreatePostPage() {
     initializeData();
   }, [status, session, router]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!title.trim() || !content.trim() || !selectedCategoryId) {
-      setError("Please fill in all required fields");
-      return;
-    }
-
-    if (title.length < 5) {
-      setError("Title must be at least 5 characters long");
-      return;
-    }
-
-    if (content.length < 10) {
-      setError("Content must be at least 10 characters long");
-      return;
-    }
-
-    setSubmitting(true);
-    setError("");
-
+  // Create post function
+  const handleCreatePost = async (values: { title: string; content: string; categoryId: string }) => {
     try {
       const response = await fetch('/api/posts', {
         method: 'POST',
@@ -146,9 +128,9 @@ export default function CreatePostPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          title: title.trim(),
-          content: content.trim(),
-          categoryId: selectedCategoryId,
+          title: values.title.trim(),
+          content: values.content.trim(),
+          categoryId: values.categoryId,
         }),
       });
 
@@ -165,14 +147,12 @@ export default function CreatePostPage() {
       
       // Redirect to the post or home page
       router.push("/");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating post:', error);
-      setError(error.message || "Failed to create post. Please try again.");
+      setError("title", (error as Error).message || "Failed to create post. Please try again.");
       toast.error("Failed to create post", {
-        description: error.message || "Please try again."
+        description: (error as Error).message || "Please try again."
       });
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -223,17 +203,19 @@ export default function CreatePostPage() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
-                {error && (
+                {Object.keys(errors).length > 0 && (
                   <Alert variant="destructive">
                     <Icon icon="lucide:alert-circle" className="h-4 w-4" />
-                    <AlertDescription>{error}</AlertDescription>
+                    <AlertDescription>
+                      {Object.values(errors).join(", ")}
+                    </AlertDescription>
                   </Alert>
                 )}
 
                 {/* Category Selection */}
                 <div className="space-y-2">
                   <Label htmlFor="category">Category *</Label>
-                  <Select value={selectedCategoryId} onValueChange={setSelectedCategoryId} required>
+                  <Select value={values.categoryId} onValueChange={(value) => handleChange("categoryId", value)} required>
                     <SelectTrigger>
                       <SelectValue placeholder="Select a category for your post" />
                     </SelectTrigger>
@@ -254,10 +236,13 @@ export default function CreatePostPage() {
                       ))}
                     </SelectContent>
                   </Select>
-                  {selectedCategoryId && (
+                  {values.categoryId && (
                     <p className="text-sm text-muted-foreground">
-                      {categories.find(cat => cat.categoryId.toString() === selectedCategoryId)?.description || "No description available"}
+                      {categories.find(cat => cat.categoryId.toString() === values.categoryId)?.description || "No description available"}
                     </p>
+                  )}
+                  {errors.categoryId && (
+                    <p className="text-sm text-red-500">{errors.categoryId}</p>
                   )}
                 </div>
 
@@ -266,8 +251,8 @@ export default function CreatePostPage() {
                   <Label htmlFor="title">Post Title *</Label>
                   <Input
                     id="title"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
+                    value={values.title}
+                    onChange={(e) => handleChange("title", e.target.value)}
                     placeholder="Enter a descriptive title for your post"
                     className="text-lg"
                     required
@@ -275,8 +260,11 @@ export default function CreatePostPage() {
                     maxLength={200}
                   />
                   <p className="text-sm text-muted-foreground">
-                    {title.length}/200 characters
+                    {values.title.length}/200 characters
                   </p>
+                  {errors.title && (
+                    <p className="text-sm text-red-500">{errors.title}</p>
+                  )}
                 </div>
 
                 {/* Post Content */}
@@ -284,8 +272,8 @@ export default function CreatePostPage() {
                   <Label htmlFor="content">Post Content *</Label>
                   <Textarea
                     id="content"
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
+                    value={values.content}
+                    onChange={(e) => handleChange("content", e.target.value)}
                     placeholder="Write your post content here. Be detailed and helpful to the community."
                     className="min-h-[300px] text-base"
                     required
@@ -293,8 +281,11 @@ export default function CreatePostPage() {
                     maxLength={10000}
                   />
                   <p className="text-sm text-muted-foreground">
-                    {content.length}/10,000 characters
+                    {values.content.length}/10,000 characters
                   </p>
+                  {errors.content && (
+                    <p className="text-sm text-red-500">{errors.content}</p>
+                  )}
                 </div>
 
                 {/* Form Actions */}
@@ -303,15 +294,15 @@ export default function CreatePostPage() {
                     type="button"
                     variant="outline"
                     onClick={() => router.back()}
-                    disabled={submitting}
+                    disabled={isSubmitting}
                   >
                     Cancel
                   </Button>
                   <Button
                     type="submit"
-                    disabled={submitting || !title.trim() || !content.trim() || !selectedCategoryId}
+                    disabled={isSubmitting || !values.title.trim() || !values.content.trim() || !values.categoryId}
                   >
-                    {submitting ? (
+                    {isSubmitting ? (
                       <>
                         <Icon icon="lucide:loader-2" className="mr-2 h-4 w-4 animate-spin" />
                         Creating Post...

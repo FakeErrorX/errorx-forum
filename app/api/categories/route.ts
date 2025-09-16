@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCategories, createCategory } from "../database";
+import { CategoryWithRelations } from "../types";
 
 export async function GET() {
   try {
     const categories = await getCategories();
     
     // Transform categories to hide internal IDs and use custom IDs
-    const cleanCategories = categories.map(category => ({
-      categoryId: (category as any).categoryId,
+    const cleanCategories = categories.map((category: CategoryWithRelations) => ({
+      categoryId: category.categoryId,
       name: category.name,
       description: category.description,
       icon: category.icon,
@@ -51,7 +52,7 @@ export async function POST(request: NextRequest) {
 
     // Transform category to hide internal IDs and use custom IDs
     const cleanCategory = {
-      categoryId: (category as any).categoryId,
+      categoryId: (category as CategoryWithRelations).categoryId,
       name: category.name,
       description: category.description,
       icon: category.icon,

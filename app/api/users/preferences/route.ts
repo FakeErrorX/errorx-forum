@@ -14,7 +14,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const userId = (session.user as any).id;
+    const userId = (session.user as { id: string }).id;
 
     const body = await request.json();
     const { theme, notifications, emailUpdates } = body;

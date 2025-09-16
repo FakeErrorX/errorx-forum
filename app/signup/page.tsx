@@ -187,9 +187,9 @@ export default function SignUpPage() {
           router.push("/");
         }
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error("Sign up failed", {
-        description: error.message || "Please try again with different credentials."
+        description: (error as Error).message || "Please try again with different credentials."
       });
     } finally {
       setLoading(false);

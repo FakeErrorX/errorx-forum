@@ -5,6 +5,7 @@ import { getPosts, createPost } from "../database";
 import { createSecureResponse, createSecureErrorResponse } from "@/lib/api-security";
 import { createPostSchema, paginationSchema, searchSchema } from "@/lib/validations";
 import { validateRequestBody, validateQueryParams, handleValidationError } from "@/lib/api-validation";
+import { PostWithRelations } from "../types";
 import { z } from "zod";
 
 export async function GET(request: NextRequest) {
@@ -29,12 +30,12 @@ export async function GET(request: NextRequest) {
     }
     
     // Transform posts to hide internal IDs and use custom IDs
-    const cleanPosts = posts.map(post => ({
-      postId: (post as any).postId,
+    const cleanPosts = posts.map((post: PostWithRelations) => ({
+      postId: post.postId,
       title: post.title,
       content: post.content,
-      categoryId: (post.category as any).categoryId,
-      authorId: (post.author as any).userId,
+      categoryId: post.category.categoryId,
+      authorId: post.author.userId,
       authorUsername: post.authorUsername,
       isPinned: post.isPinned,
       isLocked: post.isLocked,
@@ -44,13 +45,13 @@ export async function GET(request: NextRequest) {
       createdAt: post.createdAt,
       updatedAt: post.updatedAt,
       author: {
-        userId: (post.author as any).userId,
+        userId: post.author.userId,
         name: post.author.name,
         username: post.author.username,
         image: post.author.image
       },
       category: {
-        categoryId: (post.category as any).categoryId,
+        categoryId: post.category.categoryId,
         name: post.category.name,
         description: post.category.description,
         icon: post.category.icon,
@@ -85,7 +86,7 @@ export async function POST(request: NextRequest) {
 
     // Get user's username
     const { getUserProfile } = await import("../users");
-    const userId = (session.user as any).id;
+    const userId = (session.user as { id: string }).id;
     const user = await getUserProfile(userId);
     if (!user) {
       return NextResponse.json(
@@ -97,7 +98,7 @@ export async function POST(request: NextRequest) {
     // Find the internal category ID from the custom categoryId
     const { prisma } = await import("@/lib/prisma");
     const category = await prisma.category.findFirst({
-      where: { categoryId: parseInt(categoryId) } as any
+      where: { categoryId: parseInt(categoryId) }
     });
 
     if (!category) {
@@ -122,11 +123,11 @@ export async function POST(request: NextRequest) {
 
     // Transform post to hide internal IDs and use custom IDs
     const cleanPost = {
-      postId: (post as any).postId,
+      postId: (post as PostWithRelations).postId,
       title: post.title,
       content: post.content,
-      categoryId: (post.category as any).categoryId,
-      authorId: (post.author as any).userId,
+      categoryId: (post as PostWithRelations).category.categoryId,
+      authorId: (post as PostWithRelations).author.userId,
       authorUsername: post.authorUsername,
       isPinned: post.isPinned,
       isLocked: post.isLocked,
@@ -136,17 +137,17 @@ export async function POST(request: NextRequest) {
       createdAt: post.createdAt,
       updatedAt: post.updatedAt,
       author: {
-        userId: (post.author as any).userId,
-        name: post.author.name,
-        username: post.author.username,
-        image: post.author.image
+        userId: (post as PostWithRelations).author.userId,
+        name: (post as PostWithRelations).author.name,
+        username: (post as PostWithRelations).author.username,
+        image: (post as PostWithRelations).author.image
       },
       category: {
-        categoryId: (post.category as any).categoryId,
-        name: post.category.name,
-        description: post.category.description,
-        icon: post.category.icon,
-        color: post.category.color
+        categoryId: (post as PostWithRelations).category.categoryId,
+        name: (post as PostWithRelations).category.name,
+        description: (post as PostWithRelations).category.description,
+        icon: (post as PostWithRelations).category.icon,
+        color: (post as PostWithRelations).category.color
       }
     };
     

@@ -45,7 +45,7 @@ export function createSecureErrorResponse(message: string, status: number = 400)
 /**
  * Create a secure success response
  */
-export function createSecureResponse(data: any, status: number = 200): NextResponse {
+export function createSecureResponse(data: unknown, status: number = 200): NextResponse {
   const response = NextResponse.json(data, { status });
   return addSecurityHeaders(response);
 }

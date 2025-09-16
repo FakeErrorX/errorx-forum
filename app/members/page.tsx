@@ -169,7 +169,7 @@ export default function MembersPage() {
           <Card>
             <CardContent className="p-6">
               <div className="flex justify-center">
-                <Tabs value={sortBy} onValueChange={(value) => setSortBy(value as any)}>
+                <Tabs value={sortBy} onValueChange={(value) => setSortBy(value as "newest" | "oldest" | "posts" | "reputation")}>
                   <TabsList>
                     <TabsTrigger value="newest">Newest</TabsTrigger>
                     <TabsTrigger value="oldest">Oldest</TabsTrigger>

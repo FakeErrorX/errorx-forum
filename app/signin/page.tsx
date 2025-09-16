@@ -80,9 +80,9 @@ export default function SignInPage() {
       router.push("/");
         }
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error("Sign in failed", {
-        description: error.message || "Please check your credentials and try again."
+        description: (error as Error).message || "Please check your credentials and try again."
       });
     } finally {
       setLoading(false);
@@ -112,9 +112,9 @@ export default function SignInPage() {
       
       setResetEmailOrUsername("");
       setForgotPassword(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error("Failed to send reset email", {
-        description: error.message || "Please check your email address and try again."
+        description: (error as Error).message || "Please check your email address and try again."
       });
     } finally {
       setResetLoading(false);
@@ -364,7 +364,7 @@ export default function SignInPage() {
 
                     <div className="text-center">
                   <p className="text-sm text-muted-foreground">
-                    Don't have an account?{" "}
+                    Don&apos;t have an account?{" "}
                         <Link href="/signup" className="text-primary hover:underline font-medium">
                           Create one now
                     </Link>
@@ -379,7 +379,7 @@ export default function SignInPage() {
                       </div>
                       <h3 className="text-xl font-semibold">Reset your password</h3>
                       <p className="text-sm text-muted-foreground mt-2">
-                        Enter your email address or username and we'll send you a reset link
+                        Enter your email address or username and we&apos;ll send you a reset link
                       </p>
                     </div>
 

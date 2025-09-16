@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { createComment, getCommentsByPost } from "../database";
+import { CommentWithRelations } from "../types";
 
 export async function GET(request: NextRequest) {
   try {
@@ -19,18 +20,18 @@ export async function GET(request: NextRequest) {
     const comments = await getCommentsByPost(postId, limit);
     
     // Transform comments to hide internal IDs and use custom IDs
-    const cleanComments = comments.map(comment => ({
-      commentId: (comment as any).commentId,
-      postId: (comment as any).postId,
-      authorId: (comment.author as any).userId,
+    const cleanComments = comments.map((comment: CommentWithRelations) => ({
+      commentId: comment.commentId,
+      postId: comment.postId,
+      authorId: comment.author.userId,
       authorUsername: comment.authorUsername,
       content: comment.content,
-      parentId: comment.parentId ? (comment as any).parentId : null,
+      parentId: comment.parentId ? comment.parentId : null,
       likes: comment.likes,
       createdAt: comment.createdAt,
       updatedAt: comment.updatedAt,
       author: {
-        userId: (comment.author as any).userId,
+        userId: comment.author.userId,
         name: comment.author.name,
         username: comment.author.username,
         image: comment.author.image
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest) {
 
     // Get user's username
     const { getUserProfile } = await import("../users");
-    const userId = (session.user as any).id;
+    const userId = (session.user as { id: string }).id;
     const user = await getUserProfile(userId);
     if (!user) {
       return NextResponse.json(
@@ -89,20 +90,20 @@ export async function POST(request: NextRequest) {
 
     // Transform comment to hide internal IDs and use custom IDs
     const cleanComment = {
-      commentId: (comment as any).commentId,
-      postId: (comment as any).postId,
-      authorId: (comment.author as any).userId,
+      commentId: (comment as CommentWithRelations).commentId,
+      postId: (comment as CommentWithRelations).postId,
+      authorId: (comment as CommentWithRelations).author.userId,
       authorUsername: comment.authorUsername,
       content: comment.content,
-      parentId: comment.parentId ? (comment as any).parentId : null,
+      parentId: comment.parentId ? (comment as CommentWithRelations).parentId : null,
       likes: comment.likes,
       createdAt: comment.createdAt,
       updatedAt: comment.updatedAt,
       author: {
-        userId: (comment.author as any).userId,
-        name: comment.author.name,
-        username: comment.author.username,
-        image: comment.author.image
+        userId: (comment as CommentWithRelations).author.userId,
+        name: (comment as CommentWithRelations).author.name,
+        username: (comment as CommentWithRelations).author.username,
+        image: (comment as CommentWithRelations).author.image
       }
     };
     

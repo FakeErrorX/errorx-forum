@@ -93,7 +93,7 @@ export default function ProfilePage() {
       const response = await fetch('/api/posts?limit=50&offset=0');
       if (response.ok) {
         const postsData = await response.json();
-        const userPostsData = postsData.filter((post: any) => post.authorId === userId);
+        const userPostsData = postsData.filter((post: { authorId: string }) => post.authorId === userId);
         setUserPosts(userPostsData);
       }
     } catch (error) {
@@ -182,8 +182,8 @@ export default function ProfilePage() {
       setUser(updatedUser);
       
       setIsEditing(false);
-    } catch (error: any) {
-      setError(error.message || "Failed to update profile. Please try again.");
+    } catch (error: unknown) {
+      setError((error as Error).message || "Failed to update profile. Please try again.");
     } finally {
       setSaveLoading(false);
     }
@@ -251,7 +251,7 @@ export default function ProfilePage() {
       setUser(updatedUser);
       setAvatarUrl(file.url);
       toast.success("Avatar updated successfully!");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Avatar upload error:', error);
       toast.error("Failed to update avatar. Please try again.");
     } finally {
@@ -311,7 +311,7 @@ export default function ProfilePage() {
       setUser(updatedUser);
       setAvatarUrl("");
       toast.success("Avatar removed successfully!");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Avatar deletion error:', error);
       toast.error("Failed to remove avatar. Please try again.");
     } finally {
@@ -699,7 +699,7 @@ export default function ProfilePage() {
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
                   <Icon icon="lucide:message-square" className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-                  <p>You haven't created any posts yet</p>
+                  <p>You haven&apos;t created any posts yet</p>
                 </div>
               )}
             </TabsContent>

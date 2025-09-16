@@ -152,7 +152,7 @@ export default function PublicProfilePage() {
             <Icon icon="lucide:user-x" className="h-16 w-16 mx-auto text-muted-foreground" />
             <h1 className="text-2xl font-bold">User Not Found</h1>
             <p className="text-muted-foreground">
-              The user you're looking for doesn't exist or has been removed.
+              The user you&apos;re looking for doesn&apos;t exist or has been removed.
             </p>
             <Button onClick={() => router.back()}>
               <Icon icon="lucide:arrow-left" className="h-4 w-4 mr-2" />
@@ -203,7 +203,7 @@ export default function PublicProfilePage() {
           {/* Profile Header */}
           <div className="text-center">
             <h1 className="text-3xl font-bold">Public Profile</h1>
-            <p className="text-muted-foreground">Viewing @{user.username}'s profile</p>
+            <p className="text-muted-foreground">Viewing @{user.username}&apos;s profile</p>
           </div>
 
         {/* Profile Header */}
@@ -275,7 +275,7 @@ export default function PublicProfilePage() {
                     <Icon icon="lucide:file-text" className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                     <h3 className="text-lg font-medium mb-2">No posts yet</h3>
                     <p className="text-muted-foreground">
-                      {user.name || user.username} hasn't created any posts yet.
+                      {user.name || user.username} hasn&apos;t created any posts yet.
                     </p>
                   </div>
                 </CardContent>

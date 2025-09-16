@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getPostById, updatePost, deletePost, incrementPostViews } from "../../database";
+import { PostWithRelations, CommentWithRelations } from "../../types";
 
 export async function GET(
   request: NextRequest,
@@ -23,11 +24,11 @@ export async function GET(
 
     // Transform post to hide internal IDs and use custom IDs
     const cleanPost = {
-      postId: (post as any).postId,
+      postId: (post as PostWithRelations).postId,
       title: post.title,
       content: post.content,
-      categoryId: (post.category as any).categoryId,
-      authorId: (post.author as any).userId,
+      categoryId: (post as PostWithRelations).category.categoryId,
+      authorId: (post as PostWithRelations).author.userId,
       authorUsername: post.authorUsername,
       isPinned: post.isPinned,
       isLocked: post.isLocked,
@@ -37,30 +38,30 @@ export async function GET(
       createdAt: post.createdAt,
       updatedAt: post.updatedAt,
       author: {
-        userId: (post.author as any).userId,
-        name: post.author.name,
-        username: post.author.username,
-        image: post.author.image
+        userId: (post as PostWithRelations).author.userId,
+        name: (post as PostWithRelations).author.name,
+        username: (post as PostWithRelations).author.username,
+        image: (post as PostWithRelations).author.image
       },
       category: {
-        categoryId: (post.category as any).categoryId,
-        name: post.category.name,
-        description: post.category.description,
-        icon: post.category.icon,
-        color: post.category.color
+        categoryId: (post as PostWithRelations).category.categoryId,
+        name: (post as PostWithRelations).category.name,
+        description: (post as PostWithRelations).category.description,
+        icon: (post as PostWithRelations).category.icon,
+        color: (post as PostWithRelations).category.color
       },
-      comments: post.comments?.map(comment => ({
-        commentId: (comment as any).commentId,
-        postId: (post as any).postId,
-        authorId: (comment.author as any).userId,
+      comments: post.comments?.map((comment: CommentWithRelations) => ({
+        commentId: comment.commentId,
+        postId: (post as PostWithRelations).postId,
+        authorId: comment.author.userId,
         authorUsername: comment.authorUsername,
         content: comment.content,
-        parentId: comment.parentId ? (comment as any).parentId : null,
+        parentId: comment.parentId ? comment.parentId : null,
         likes: comment.likes,
         createdAt: comment.createdAt,
         updatedAt: comment.updatedAt,
         author: {
-          userId: (comment.author as any).userId,
+          userId: comment.author.userId,
           name: comment.author.name,
           username: comment.author.username,
           image: comment.author.image
@@ -103,7 +104,7 @@ export async function PUT(
     }
 
     // Check if user is the author
-    const userId = (session.user as any).id;
+    const userId = (session.user as { id: string }).id;
     if (post.authorId !== userId) {
       return NextResponse.json(
         { error: "Forbidden" },
@@ -115,11 +116,11 @@ export async function PUT(
     
     // Transform post to hide internal IDs and use custom IDs
     const cleanPost = {
-      postId: (updatedPost as any).postId,
+      postId: (updatedPost as PostWithRelations).postId,
       title: updatedPost.title,
       content: updatedPost.content,
-      categoryId: (updatedPost.category as any).categoryId,
-      authorId: (updatedPost.author as any).userId,
+      categoryId: (updatedPost as PostWithRelations).category.categoryId,
+      authorId: (updatedPost as PostWithRelations).author.userId,
       authorUsername: updatedPost.authorUsername,
       isPinned: updatedPost.isPinned,
       isLocked: updatedPost.isLocked,
@@ -129,17 +130,17 @@ export async function PUT(
       createdAt: updatedPost.createdAt,
       updatedAt: updatedPost.updatedAt,
       author: {
-        userId: (updatedPost.author as any).userId,
-        name: updatedPost.author.name,
-        username: updatedPost.author.username,
-        image: updatedPost.author.image
+        userId: (updatedPost as PostWithRelations).author.userId,
+        name: (updatedPost as PostWithRelations).author.name,
+        username: (updatedPost as PostWithRelations).author.username,
+        image: (updatedPost as PostWithRelations).author.image
       },
       category: {
-        categoryId: (updatedPost.category as any).categoryId,
-        name: updatedPost.category.name,
-        description: updatedPost.category.description,
-        icon: updatedPost.category.icon,
-        color: updatedPost.category.color
+        categoryId: (updatedPost as PostWithRelations).category.categoryId,
+        name: (updatedPost as PostWithRelations).category.name,
+        description: (updatedPost as PostWithRelations).category.description,
+        icon: (updatedPost as PostWithRelations).category.icon,
+        color: (updatedPost as PostWithRelations).category.color
       }
     };
     
@@ -177,7 +178,7 @@ export async function DELETE(
     }
 
     // Check if user is the author
-    const userId = (session.user as any).id;
+    const userId = (session.user as { id: string }).id;
     if (post.authorId !== userId) {
       return NextResponse.json(
         { error: "Forbidden" },

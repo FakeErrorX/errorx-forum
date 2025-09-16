@@ -1,6 +1,24 @@
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 
+// Extended Prisma user type that includes custom fields
+interface PrismaUserWithCustomFields {
+  id: string;
+  userId: number;
+  name: string | null;
+  username: string | null;
+  email: string;
+  image: string | null;
+  bio: string | null;
+  postCount: number;
+  reputation: number;
+  isActive: boolean;
+  preferences: Record<string, unknown>;
+  password?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface UserProfile {
   userId: number; // Custom sequential user ID (only public ID)
   name: string | null;
@@ -59,12 +77,12 @@ export async function createUser(userData: CreateUserData): Promise<UserProfile>
     const { id, ...userWithoutId } = userProfile;
     return {
       ...userWithoutId,
-      preferences: userProfile.preferences as {
+      preferences: (userProfile as PrismaUserWithCustomFields).preferences as {
         theme: 'light' | 'dark' | 'system';
         notifications: boolean;
         emailUpdates: boolean;
       }
-    } as any as UserProfile;
+    } as UserProfile;
   } catch (error) {
     console.error('Error creating user profile:', error);
     throw new Error(`Failed to create user profile: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -80,7 +98,7 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
       where: { id: userId },
       select: {
         id: true,
-        userId: true as any,
+        userId: true,
         name: true,
         username: true,
         email: true,
@@ -92,7 +110,7 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
         preferences: true,
         createdAt: true,
         updatedAt: true
-      } as any as any
+      }
     });
 
     if (!user) {
@@ -102,12 +120,12 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
     const { id, ...userWithoutId } = user;
     return {
       ...userWithoutId,
-      preferences: ((user as any).preferences || {}) as {
+      preferences: ((user as PrismaUserWithCustomFields).preferences || {}) as {
         theme: 'light' | 'dark' | 'system';
         notifications: boolean;
         emailUpdates: boolean;
       }
-    } as any as UserProfile;
+    } as UserProfile;
   } catch (error) {
     console.error('Error getting user profile:', error);
     return null;
@@ -117,10 +135,10 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
 export async function getUserProfileByCustomId(customUserId: number): Promise<UserProfile | null> {
   try {
     const user = await prisma.user.findUnique({
-      where: { userId: customUserId } as any,
+      where: { userId: customUserId },
       select: {
         id: true,
-        userId: true as any,
+        userId: true,
         name: true,
         username: true,
         email: true,
@@ -132,7 +150,7 @@ export async function getUserProfileByCustomId(customUserId: number): Promise<Us
         preferences: true,
         createdAt: true,
         updatedAt: true
-      } as any as any
+      }
     });
 
     if (!user) {
@@ -142,12 +160,12 @@ export async function getUserProfileByCustomId(customUserId: number): Promise<Us
     const { id, ...userWithoutId } = user;
     return {
       ...userWithoutId,
-      preferences: ((user as any).preferences || {}) as {
+      preferences: ((user as PrismaUserWithCustomFields).preferences || {}) as {
         theme: 'light' | 'dark' | 'system';
         notifications: boolean;
         emailUpdates: boolean;
       }
-    } as any as UserProfile;
+    } as UserProfile;
   } catch (error) {
     console.error('Error getting user profile by custom ID:', error);
     return null;
@@ -163,7 +181,7 @@ export async function getUserByEmail(email: string): Promise<UserProfile | null>
       where: { email },
       select: {
         id: true,
-        userId: true as any,
+        userId: true,
         name: true,
         username: true,
         email: true,
@@ -175,7 +193,7 @@ export async function getUserByEmail(email: string): Promise<UserProfile | null>
         preferences: true,
         createdAt: true,
         updatedAt: true
-      } as any
+      }
     });
 
     if (!user) {
@@ -185,12 +203,12 @@ export async function getUserByEmail(email: string): Promise<UserProfile | null>
     const { id, ...userWithoutId } = user;
     return {
       ...userWithoutId,
-      preferences: ((user as any).preferences || {}) as {
+      preferences: ((user as PrismaUserWithCustomFields).preferences || {}) as {
         theme: 'light' | 'dark' | 'system';
         notifications: boolean;
         emailUpdates: boolean;
       }
-    } as any as UserProfile;
+    } as UserProfile;
   } catch (error) {
     console.error('Error getting user by email:', error);
     return null;
@@ -210,7 +228,7 @@ export async function updateUserProfile(
       data: updates,
       select: {
         id: true,
-        userId: true as any,
+        userId: true,
         name: true,
         username: true,
         email: true,
@@ -222,18 +240,18 @@ export async function updateUserProfile(
         preferences: true,
         createdAt: true,
         updatedAt: true
-      } as any
+      }
     });
 
     const { id, ...userWithoutId } = result;
     return {
       ...userWithoutId,
-      preferences: ((result as any).preferences || {}) as {
+      preferences: ((result as PrismaUserWithCustomFields).preferences || {}) as {
         theme: 'light' | 'dark' | 'system';
         notifications: boolean;
         emailUpdates: boolean;
       }
-    } as any as UserProfile;
+    } as UserProfile;
   } catch (error) {
     console.error('Error updating user profile:', error);
     throw new Error('Failed to update user profile');
@@ -326,7 +344,7 @@ export async function verifyPassword(email: string, password: string): Promise<U
       where: { email },
       select: {
         id: true,
-        userId: true as any,
+        userId: true,
         name: true,
         username: true,
         email: true,
@@ -339,14 +357,14 @@ export async function verifyPassword(email: string, password: string): Promise<U
         createdAt: true,
         updatedAt: true,
         password: true
-      } as any
+      }
     });
 
-    if (!user || !(user as any).password) {
+    if (!user || !(user as PrismaUserWithCustomFields).password) {
       return null;
     }
 
-    const isPasswordValid = await bcrypt.compare(password, (user as any).password);
+    const isPasswordValid = await bcrypt.compare(password, (user as PrismaUserWithCustomFields).password!);
     
     if (!isPasswordValid) {
       return null;
@@ -355,12 +373,12 @@ export async function verifyPassword(email: string, password: string): Promise<U
     const { id, password: _, ...userWithoutId } = user;
     return {
       ...userWithoutId,
-      preferences: ((user as any).preferences || {}) as {
+      preferences: ((user as PrismaUserWithCustomFields).preferences || {}) as {
         theme: 'light' | 'dark' | 'system';
         notifications: boolean;
         emailUpdates: boolean;
       }
-    } as any as UserProfile;
+    } as UserProfile;
   } catch (error) {
     console.error('Error verifying password:', error);
     return null;

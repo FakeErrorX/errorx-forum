@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const userId = (session.user as any).id;
+    const userId = (session.user as { id: string }).id;
     const formData = await request.formData();
     const file = formData.get('file') as File;
     const folder = formData.get('folder') as string || 'uploads';

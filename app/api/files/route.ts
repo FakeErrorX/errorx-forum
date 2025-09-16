@@ -13,7 +13,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const userId = (session.user as any).id;
+    const userId = (session.user as { id: string }).id;
     const { key } = await request.json();
 
     if (!key) {

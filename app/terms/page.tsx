@@ -69,7 +69,7 @@ export default function TermsPage() {
               <section>
                 <h2 className="text-2xl font-semibold mb-4">1. Acceptance of Terms</h2>
                 <p className="text-muted-foreground leading-relaxed">
-                  By accessing and using ErrorX Community ("the Service"), you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by the above, please do not use this service.
+                  By accessing and using ErrorX Community (&quot;the Service&quot;), you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by the above, please do not use this service.
                 </p>
               </section>
 
@@ -139,7 +139,7 @@ export default function TermsPage() {
               <section>
                 <h2 className="text-2xl font-semibold mb-4">8. Disclaimer</h2>
                 <p className="text-muted-foreground leading-relaxed">
-                  The information on this Service is provided on an "as is" basis. To the fullest extent permitted by law, this Company excludes all representations, warranties, conditions and terms relating to our Service and the use of this Service.
+                  The information on this Service is provided on an &quot;as is&quot; basis. To the fullest extent permitted by law, this Company excludes all representations, warranties, conditions and terms relating to our Service and the use of this Service.
                 </p>
               </section>
 

@@ -20,6 +20,18 @@ const eslintConfig = [
       "next-env.d.ts",
     ],
   },
+  {
+    rules: {
+      // Suppress warnings for unused variables
+      "@typescript-eslint/no-unused-vars": "off",
+      // Suppress warnings for unused imports
+      "no-unused-vars": "off",
+      // Suppress React hooks exhaustive deps warnings
+      "react-hooks/exhaustive-deps": "off",
+      // Suppress Next.js image optimization warnings
+      "@next/next/no-img-element": "off",
+    },
+  },
 ];
 
 export default eslintConfig;

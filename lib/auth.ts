@@ -7,7 +7,7 @@ import bcrypt from "bcryptjs"
 import { generateUniqueUsername } from "./username-generator"
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma) as any,
+  adapter: PrismaAdapter(prisma),
   providers: [
     CredentialsProvider({
       name: "credentials",
@@ -55,7 +55,7 @@ export const authOptions: NextAuthOptions = {
         }
 
         return {
-          id: (user as any).userId.toString(), // Use custom userId as the session ID
+          id: (user as { userId: number }).userId.toString(), // Use custom userId as the session ID
           email: user.email,
           name: user.name,
           image: user.image,
@@ -84,12 +84,12 @@ export const authOptions: NextAuthOptions = {
         // Find user by email to get their custom userId
         const dbUser = await prisma.user.findUnique({
           where: { email: user.email! },
-          select: { userId: true, username: true } as any
+          select: { userId: true, username: true }
         });
         
         if (dbUser) {
           // User exists, use their custom userId
-          user.id = (dbUser as any).userId.toString();
+          user.id = (dbUser as { userId: number }).userId.toString();
         } else {
           // User doesn't exist, PrismaAdapter will create them
           // We'll handle username generation in the JWT callback after user creation
@@ -104,7 +104,7 @@ export const authOptions: NextAuthOptions = {
           // Always fetch the userId from database for OAuth users
           const dbUser = await prisma.user.findUnique({
             where: { email: user.email! },
-            select: { userId: true, username: true } as any
+            select: { userId: true, username: true }
           });
           
           if (dbUser) {
@@ -122,8 +122,8 @@ export const authOptions: NextAuthOptions = {
               }
             }
             
-            token.id = (dbUser as any).userId.toString()
-            token.userId = (dbUser as any).userId.toString()
+            token.id = (dbUser as { userId: number }).userId.toString()
+            token.userId = (dbUser as { userId: number }).userId.toString()
           }
         } else {
           // Credentials provider - user.id is already the userId
@@ -135,8 +135,8 @@ export const authOptions: NextAuthOptions = {
     },
     async session({ session, token }) {
       if (token && session.user) {
-        (session.user as any).id = token.id as string // Custom userId
-        (session.user as any).userId = token.userId as string // Also expose as userId
+        (session.user as { id: string }).id = token.id as string // Custom userId      
+        (session.user as { userId: string }).userId = token.userId as string // Also expose as userId
       }
       return session
     },

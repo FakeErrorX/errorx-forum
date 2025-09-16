@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const customUserId = parseInt((session.user as any).id);
+    const customUserId = parseInt((session.user as { id: string }).id);
     const user = await getUserProfileByCustomId(customUserId);
     if (!user) {
       return NextResponse.json(
@@ -47,7 +47,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const customUserId = parseInt((session.user as any).id);
+    const customUserId = parseInt((session.user as { id: string }).id);
     const body = await request.json();
     const { name, username, bio, image, preferences } = body;
 
@@ -62,7 +62,7 @@ export async function PUT(request: NextRequest) {
 
     // Find the internal ID by searching for the user with this custom userId
     const userWithInternalId = await prisma.user.findUnique({
-      where: { userId: customUserId } as any,
+      where: { userId: customUserId },
       select: { id: true }
     });
 
