@@ -50,6 +50,7 @@ model User {
   password      String?   // For credentials provider
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  lastUsernameChangeAt DateTime?
 
   // Forum-specific fields
   bio           String?

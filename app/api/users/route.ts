@@ -26,8 +26,35 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Calculate username change cooldown
+    const rawUserAny = await prisma.user.findUnique({
+      where: { userId: customUserId }
+    });
+
+    let canChangeUsername = true;
+    let usernameChangeDaysLeft = 0;
+    let nextUsernameChangeAt: string | null = null;
+    const lastChangeAt = (rawUserAny as unknown as { lastUsernameChangeAt?: Date | null })?.lastUsernameChangeAt;
+    if (lastChangeAt) {
+      const now = new Date();
+      const millisSince = now.getTime() - new Date(lastChangeAt).getTime();
+      const daysSince = millisSince / (1000 * 60 * 60 * 24);
+      if (daysSince < 30) {
+        canChangeUsername = false;
+        usernameChangeDaysLeft = Math.ceil(30 - daysSince);
+        const nextAt = new Date(lastChangeAt);
+        nextAt.setDate(nextAt.getDate() + 30);
+        nextUsernameChangeAt = nextAt.toISOString();
+      }
+    }
+
     // User data already has internal ID removed and custom userId exposed
-    return NextResponse.json(user);
+    return NextResponse.json({
+      ...user,
+      canChangeUsername,
+      usernameChangeDaysLeft,
+      nextUsernameChangeAt
+    });
   } catch (error) {
     console.error("Error fetching user:", error);
     return NextResponse.json(
@@ -73,12 +100,36 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // If username is being changed, enforce 30-day cooldown
+    if (typeof username === "string" && username !== user.username) {
+      const now = new Date();
+      const lastChangeUser = await prisma.user.findUnique({
+        where: { id: userWithInternalId.id }
+      });
+
+      const lastChangeAt = (lastChangeUser as unknown as { lastUsernameChangeAt?: Date | null })?.lastUsernameChangeAt;
+      if (lastChangeAt) {
+        const millisSince = now.getTime() - new Date(lastChangeAt).getTime();
+        const daysSince = millisSince / (1000 * 60 * 60 * 24);
+        if (daysSince < 30) {
+          const daysLeft = Math.ceil(30 - daysSince);
+          return NextResponse.json(
+            { error: `You can change your username again in ${daysLeft} day(s).` },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
     const updatedUser = await updateUserProfile(userWithInternalId.id, {
       name,
       username,
       bio,
       image,
       preferences,
+      ...(typeof username === "string" && username !== user.username
+        ? ({ lastUsernameChangeAt: new Date() } as unknown as Record<string, unknown>)
+        : {})
     });
 
     if (!updatedUser) {

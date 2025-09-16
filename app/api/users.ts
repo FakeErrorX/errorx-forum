@@ -15,6 +15,7 @@ interface PrismaUserWithCustomFields {
   isActive: boolean;
   preferences: Record<string, unknown>;
   password?: string;
+  lastUsernameChangeAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -34,6 +35,7 @@ export interface UserProfile {
     notifications: boolean;
     emailUpdates: boolean;
   };
+  lastUsernameChangeAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }

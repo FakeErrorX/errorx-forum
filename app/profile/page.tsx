@@ -35,6 +35,9 @@ interface User {
   };
   createdAt: string; // API returns dates as strings
   updatedAt: string;
+  canChangeUsername?: boolean;
+  usernameChangeDaysLeft?: number;
+  nextUsernameChangeAt?: string | null;
 }
 
 interface UserPost {
@@ -85,6 +88,10 @@ export default function ProfilePage() {
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarDeleting, setAvatarDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [canChangeUsername, setCanChangeUsername] = useState<boolean>(true);
+  const [usernameChangeDaysLeft, setUsernameChangeDaysLeft] = useState<number>(0);
+  const [nextUsernameChangeAt, setNextUsernameChangeAt] = useState<string | null>(null);
+  const [countdown, setCountdown] = useState<string>("");
 
   // Load user posts
   const loadUserPosts = async (userId: string) => {
@@ -135,6 +142,9 @@ export default function ProfilePage() {
           setAvatarUrl(userData.image || "");
           setLocation(""); // Not stored in current schema
           setWebsite(""); // Not stored in current schema
+          setCanChangeUsername(userData.canChangeUsername !== false);
+          setUsernameChangeDaysLeft(userData.usernameChangeDaysLeft || 0);
+          setNextUsernameChangeAt(userData.nextUsernameChangeAt || null);
           
           // Load user posts
           await loadUserPosts(userData.id);
@@ -150,6 +160,31 @@ export default function ProfilePage() {
     };
     loadUserData();
   }, [session, status, router]);
+
+  // Live countdown for username change
+  useEffect(() => {
+    if (!nextUsernameChangeAt) {
+      setCountdown("");
+      return;
+    }
+    const target = new Date(nextUsernameChangeAt).getTime();
+    const tick = () => {
+      const now = Date.now();
+      const diff = Math.max(0, target - now);
+      const totalSeconds = Math.floor(diff / 1000);
+      const days = Math.floor(totalSeconds / (24 * 3600));
+      const hours = Math.floor((totalSeconds % (24 * 3600)) / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+      const parts: string[] = [];
+      if (days > 0) parts.push(`${days}d`);
+      parts.push(`${hours}h`, `${minutes}m`, `${seconds}s`);
+      setCountdown(parts.join(" "));
+    };
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [nextUsernameChangeAt]);
 
   const handleSaveProfile = async () => {
     if (!user) return;
@@ -572,9 +607,16 @@ export default function ProfilePage() {
                         <Input
                           id="username"
                           value={username}
+                          disabled={!canChangeUsername}
+                          className={!canChangeUsername ? "bg-muted" : undefined}
                           onChange={(e) => setUsername(e.target.value)}
                           placeholder="Choose a username"
                         />
+                        {!canChangeUsername && (
+                          <p className="text-xs text-muted-foreground">
+                            You can change your username after {countdown || `${usernameChangeDaysLeft} day${usernameChangeDaysLeft === 1 ? '' : 's'}` }.
+                          </p>
+                        )}
                       </div>
                       
                       <div className="space-y-2">

@@ -35,6 +35,9 @@ interface User {
   };
   createdAt: string;
   updatedAt: string;
+  canChangeUsername?: boolean;
+  usernameChangeDaysLeft?: number;
+  nextUsernameChangeAt?: string | null;
 }
 
 export default function SettingsPage() {
@@ -55,6 +58,10 @@ export default function SettingsPage() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [bio, setBio] = useState("");
+  const [canChangeUsername, setCanChangeUsername] = useState<boolean>(true);
+  const [usernameChangeDaysLeft, setUsernameChangeDaysLeft] = useState<number>(0);
+  const [nextUsernameChangeAt, setNextUsernameChangeAt] = useState<string | null>(null);
+  const [countdown, setCountdown] = useState<string>("");
 
   // Password change
   const [currentPassword, setCurrentPassword] = useState("");
@@ -88,6 +95,9 @@ export default function SettingsPage() {
           setTheme(userData.preferences?.theme || 'system');
           setNotifications(userData.preferences?.notifications ?? true);
           setEmailUpdates(userData.preferences?.emailUpdates ?? true);
+          setCanChangeUsername(userData.canChangeUsername !== false);
+          setUsernameChangeDaysLeft(userData.usernameChangeDaysLeft || 0);
+          setNextUsernameChangeAt(userData.nextUsernameChangeAt || null);
         } else {
           router.push("/signin");
         }
@@ -101,6 +111,31 @@ export default function SettingsPage() {
 
     loadUserData();
   }, [session, status, router]);
+
+  // Live countdown for username change
+  useEffect(() => {
+    if (!nextUsernameChangeAt) {
+      setCountdown("");
+      return;
+    }
+    const target = new Date(nextUsernameChangeAt).getTime();
+    const tick = () => {
+      const now = Date.now();
+      const diff = Math.max(0, target - now);
+      const totalSeconds = Math.floor(diff / 1000);
+      const days = Math.floor(totalSeconds / (24 * 3600));
+      const hours = Math.floor((totalSeconds % (24 * 3600)) / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+      const parts = [] as string[];
+      if (days > 0) parts.push(`${days}d`);
+      parts.push(`${hours}h`, `${minutes}m`, `${seconds}s`);
+      setCountdown(parts.join(" "));
+    };
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [nextUsernameChangeAt]);
 
   useEffect(() => {
     const fetchClientIp = async () => {
@@ -354,9 +389,16 @@ export default function SettingsPage() {
                     <Input
                       id="username"
                       value={username}
+                      disabled={!canChangeUsername}
+                      className={!canChangeUsername ? "bg-muted" : undefined}
                       onChange={(e) => setUsername(e.target.value)}
                       placeholder="Choose a username"
                     />
+                    {!canChangeUsername && (
+                      <p className="text-xs text-muted-foreground">
+                        You can change your username after {countdown || `${usernameChangeDaysLeft} day${usernameChangeDaysLeft === 1 ? '' : 's'}` }.
+                      </p>
+                    )}
                   </div>
                 </div>
 
