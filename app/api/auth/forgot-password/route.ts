@@ -2,17 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendPasswordResetEmail } from "@/lib/email";
 import crypto from "crypto";
+import { forgotPasswordSchema } from "@/lib/validations";
+import { validateRequestBody, handleValidationError } from "@/lib/api-validation";
 
 export async function POST(request: NextRequest) {
   try {
-    const { email } = await request.json();
+    // Validate request body
+    const body = await request.json();
+    const { email } = validateRequestBody(forgotPasswordSchema, body);
 
-    if (!email) {
-      return NextResponse.json(
-        { error: "Email or username is required" },
-        { status: 400 }
-      );
-    }
+    // Email is already validated by Zod schema
 
     // Check if the input is an email or username
     const isEmail = email.includes('@')
@@ -64,7 +63,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Generate reset link
-    const resetLink = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
+    const resetLink = `${process.env.NEXTAUTH_URL}/reset-password?token=${resetToken}`;
 
     // Send password reset email
     const emailResult = await sendPasswordResetEmail(user.email, resetLink, user.name || undefined);
@@ -84,6 +83,9 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error("Error processing password reset request:", error);
+    if (error instanceof Error && error.message.includes('validation')) {
+      return handleValidationError(error);
+    }
     return NextResponse.json(
       { error: "Failed to process password reset request" },
       { status: 500 }

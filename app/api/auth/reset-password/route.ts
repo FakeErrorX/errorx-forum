@@ -1,25 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { resetPasswordSchema } from "@/lib/validations";
+import { validateRequestBody, handleValidationError } from "@/lib/api-validation";
 import crypto from "crypto";
 
 export async function POST(request: NextRequest) {
   try {
-    const { token, password } = await request.json();
+    // Validate request body
+    const body = await request.json();
+    const { token, password } = validateRequestBody(resetPasswordSchema, body);
 
-    if (!token || !password) {
-      return NextResponse.json(
-        { error: "Token and password are required" },
-        { status: 400 }
-      );
-    }
+    // Token and password are already validated by Zod schema
 
-    if (password.length < 8) {
-      return NextResponse.json(
-        { error: "Password must be at least 8 characters long" },
-        { status: 400 }
-      );
-    }
+    // Password strength is already validated by Zod schema
 
     // Look up the reset token in the database
     const resetRecord = await prisma.passwordReset.findUnique({
@@ -60,6 +54,9 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error("Error resetting password:", error);
+    if (error instanceof Error && error.message.includes('validation')) {
+      return handleValidationError(error);
+    }
     return NextResponse.json(
       { error: "Failed to reset password" },
       { status: 500 }

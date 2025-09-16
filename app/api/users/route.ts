@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { getUserProfile, getUserProfileByCustomId, updateUserProfile, createUser } from "../users";
 import { sendWelcomeEmail } from "@/lib/email";
 import { prisma } from "@/lib/prisma";
+import { updateUserSchema, paginationSchema } from "@/lib/validations";
+import { validateRequestBody, validateQueryParams, handleValidationError } from "@/lib/api-validation";
 
 export async function GET(request: NextRequest) {
   try {

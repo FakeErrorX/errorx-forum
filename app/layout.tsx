@@ -7,6 +7,19 @@ import { Toaster } from "@/components/ui/sonner";
 import { AuthSessionProvider } from "@/components/session-provider";
 import { defaultSEO } from "@/lib/seo";
 
+// Validate required environment variables
+const requiredEnvVars = {
+  SITE_URL: process.env.SITE_URL,
+  TWITTER_HANDLE: process.env.TWITTER_HANDLE,
+  TWITTER_SITE: process.env.TWITTER_SITE,
+};
+
+for (const [key, value] of Object.entries(requiredEnvVars)) {
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${key}`);
+  }
+}
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -29,7 +42,7 @@ export const metadata: Metadata = {
     address: false,
     telephone: false,
   },
-  metadataBase: new URL('https://errorx.org'),
+  metadataBase: new URL(process.env.SITE_URL!),
   alternates: {
     canonical: defaultSEO.canonical,
   },
@@ -57,8 +70,8 @@ export const metadata: Metadata = {
       height: img.height || 630,
       alt: img.alt || 'ErrorX Forum',
     })) : undefined,
-    creator: '@FakeErrorX',
-    site: '@FakeErrorX',
+    creator: process.env.TWITTER_HANDLE!,
+    site: process.env.TWITTER_SITE!,
   },
   robots: {
     index: true,

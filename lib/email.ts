@@ -336,7 +336,7 @@ function generateWelcomeHTML(userName: string): string {
           <p>Welcome to ErrorX Community! We're excited to have you join our vibrant developer community. You're now part of a network of developers who share knowledge, solve problems, and grow together.</p>
           
           <div style="text-align: center;">
-            <a href="${process.env.NEXTAUTH_URL || 'http://localhost:3000'}" class="button">Get Started</a>
+            <a href="${process.env.NEXTAUTH_URL}" class="button">Get Started</a>
           </div>
           
           <h3>What you can do:</h3>
@@ -385,7 +385,7 @@ What you can do:
 • Build your reputation through helpful contributions
 • Discover solutions and best practices
 
-Ready to dive in? Visit ${process.env.NEXTAUTH_URL || 'http://localhost:3000'} to get started!
+Ready to dive in? Visit ${process.env.NEXTAUTH_URL} to get started!
 
 Best regards,
 ErrorX Community Team

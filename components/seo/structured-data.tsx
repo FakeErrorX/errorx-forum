@@ -9,18 +9,39 @@ interface StructuredDataProps {
 }
 
 export function StructuredData({ type = 'organization', breadcrumbs }: StructuredDataProps) {
+  // Validate required environment variables
+  const requiredEnvVars = {
+    SITE_URL: process.env.SITE_URL,
+    SITE_NAME: process.env.SITE_NAME,
+    SITE_DESCRIPTION: process.env.SITE_DESCRIPTION,
+    TWITTER_URL: process.env.TWITTER_URL,
+    GITHUB_URL: process.env.GITHUB_URL,
+    TELEGRAM_URL: process.env.TELEGRAM_URL,
+    FACEBOOK_URL: process.env.FACEBOOK_URL,
+  };
+
+  for (const [key, value] of Object.entries(requiredEnvVars)) {
+    if (!value) {
+      throw new Error(`Missing required environment variable for structured data: ${key}`);
+    }
+  }
+
+  const baseUrl = process.env.SITE_URL!;
+  const siteName = process.env.SITE_NAME!;
+  const siteDescription = process.env.SITE_DESCRIPTION!;
+  
   const organizationSchema = {
     '@context': 'https://schema.org',
     '@type': 'Organization',
-    name: 'ErrorX Forum',
-    url: 'https://errorx.org',
-    logo: 'https://errorx.org/logo-light.png',
-    description: 'Share methods, resources, tips, tricks, earning methods, cracking, modding, and more. Join our community of developers and tech enthusiasts.',
+    name: siteName,
+    url: baseUrl,
+    logo: `${baseUrl}/logo-light.png`,
+    description: siteDescription,
     sameAs: [
-      'https://twitter.com/FakeErrorX',
-      'https://github.com/FakeErrorX',
-      'https://t.me/ErrorX_BD',
-      'https://facebook.com/ErrorX.GG',
+      process.env.TWITTER_URL!,
+      process.env.GITHUB_URL!,
+      process.env.TELEGRAM_URL!,
+      process.env.FACEBOOK_URL!,
     ],
     contactPoint: {
       '@type': 'ContactPoint',
@@ -32,14 +53,14 @@ export function StructuredData({ type = 'organization', breadcrumbs }: Structure
   const websiteSchema = {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
-    name: 'ErrorX Forum',
-    url: 'https://errorx.org',
-    description: 'Share methods, resources, tips, tricks, earning methods, cracking, modding, and more. Join our community of developers and tech enthusiasts.',
+    name: siteName,
+    url: baseUrl,
+    description: siteDescription,
     potentialAction: {
       '@type': 'SearchAction',
       target: {
         '@type': 'EntryPoint',
-        urlTemplate: 'https://errorx.org/search?q={search_term_string}',
+        urlTemplate: `${baseUrl}/search?q={search_term_string}`,
       },
       'query-input': 'required name=search_term_string',
     },

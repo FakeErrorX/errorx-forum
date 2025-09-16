@@ -2,15 +2,23 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getPosts, createPost } from "../database";
+import { createSecureResponse, createSecureErrorResponse } from "@/lib/api-security";
+import { createPostSchema, paginationSchema, searchSchema } from "@/lib/validations";
+import { validateRequestBody, validateQueryParams, handleValidationError } from "@/lib/api-validation";
+import { z } from "zod";
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get("limit") || "25");
-    const offset = parseInt(searchParams.get("offset") || "0");
-    const categoryId = searchParams.get("categoryId") || undefined;
-    const authorId = searchParams.get("authorId") || undefined;
-    const search = searchParams.get("search");
+    
+    // Validate query parameters
+    const queryParams = validateQueryParams(paginationSchema.extend({
+      categoryId: z.string().optional(),
+      authorId: z.string().optional(),
+      search: z.string().optional(),
+    }), searchParams);
+    
+    const { limit, offset, categoryId, authorId, search } = queryParams;
 
     let posts;
     if (search) {
@@ -50,13 +58,13 @@ export async function GET(request: NextRequest) {
       }
     }));
     
-    return NextResponse.json(cleanPosts);
+    return createSecureResponse(cleanPosts);
   } catch (error) {
     console.error("Error fetching posts:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch posts" },
-      { status: 500 }
-    );
+    if (error instanceof Error && error.message.includes('validation')) {
+      return handleValidationError(error);
+    }
+    return createSecureErrorResponse("Failed to fetch posts", 500);
   }
 }
 
@@ -70,15 +78,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate request body
     const body = await request.json();
-    const { title, content, categoryId } = body;
-
-    if (!title || !content || !categoryId) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      );
-    }
+    const validatedData = validateRequestBody(createPostSchema, body);
+    const { title, content, categoryId } = validatedData;
 
     // Get user's username
     const { getUserProfile } = await import("../users");
@@ -91,10 +94,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Find the internal category ID from the custom categoryId
+    const { prisma } = await import("@/lib/prisma");
+    const category = await prisma.category.findFirst({
+      where: { categoryId: parseInt(categoryId) } as any
+    });
+
+    if (!category) {
+      return NextResponse.json(
+        { error: "Category not found" },
+        { status: 404 }
+      );
+    }
+
     const post = await createPost({
       title,
       content,
-      categoryId,
+      categoryId: category.id, // Use internal database ID
       authorId: userId,
       authorUsername: user.username || user.name || "Anonymous",
       isPinned: false,
@@ -134,12 +150,12 @@ export async function POST(request: NextRequest) {
       }
     };
     
-    return NextResponse.json(cleanPost, { status: 201 });
+    return createSecureResponse(cleanPost, 201);
   } catch (error) {
     console.error("Error creating post:", error);
-    return NextResponse.json(
-      { error: "Failed to create post" },
-      { status: 500 }
-    );
+    if (error instanceof Error && error.message.includes('validation')) {
+      return handleValidationError(error);
+    }
+    return createSecureErrorResponse("Failed to create post", 500);
   }
 }

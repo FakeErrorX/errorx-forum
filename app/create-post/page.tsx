@@ -1,0 +1,368 @@
+"use client";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Icon } from '@iconify/react';
+import { toast } from "sonner";
+import Header from "@/components/layout/header";
+import { useFormValidation } from "@/hooks/use-form-validation";
+import { createPostSchema } from "@/lib/validations";
+
+interface User {
+  name: string;
+  email: string;
+  userId: number;
+  image?: string | null;
+  username?: string | null;
+}
+
+interface ForumCategory {
+  categoryId: number;
+  name: string;
+  description: string | null;
+  icon: string | null;
+  color: string | null;
+  postCount: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export default function CreatePostPage() {
+  const router = useRouter();
+  const { data: session, status } = useSession();
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const [categories, setCategories] = useState<ForumCategory[]>([]);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
+
+  // Form validation
+  const {
+    values,
+    errors,
+    isSubmitting,
+    handleChange,
+    handleSubmit,
+    setError,
+  } = useFormValidation({
+    schema: createPostSchema,
+    initialValues: {
+      title: "",
+      content: "",
+      categoryId: "",
+      authorId: "",
+      authorUsername: "",
+      isPinned: false,
+      isLocked: false,
+      views: 0,
+      likes: 0,
+      replies: 0,
+    },
+    onSubmit: async (values) => {
+      await handleCreatePost(values);
+    },
+  });
+
+  // Load current user data
+  const loadCurrentUser = async () => {
+    if (!session?.user) return;
+    
+    try {
+      const response = await fetch('/api/users');
+      if (response.ok) {
+        const userData = await response.json();
+        setCurrentUser(userData);
+      }
+    } catch (error) {
+      console.error('Error loading current user:', error);
+    }
+  };
+
+  // Load categories
+  const loadCategories = async () => {
+    try {
+      const response = await fetch('/api/categories');
+      if (response.ok) {
+        const categoriesData = await response.json();
+        setCategories(categoriesData || []);
+      }
+    } catch (error) {
+      console.error('Error loading categories:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (status === "loading") return;
+    
+    if (!session?.user) {
+      router.push("/signin");
+      return;
+    }
+
+    const initializeData = async () => {
+      await loadCategories();
+      await loadCurrentUser();
+      setLoading(false);
+    };
+    
+    initializeData();
+  }, [status, session, router]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!title.trim() || !content.trim() || !selectedCategoryId) {
+      setError("Please fill in all required fields");
+      return;
+    }
+
+    if (title.length < 5) {
+      setError("Title must be at least 5 characters long");
+      return;
+    }
+
+    if (content.length < 10) {
+      setError("Content must be at least 10 characters long");
+      return;
+    }
+
+    setSubmitting(true);
+    setError("");
+
+    try {
+      const response = await fetch('/api/posts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: title.trim(),
+          content: content.trim(),
+          categoryId: selectedCategoryId,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create post');
+      }
+
+      const newPost = await response.json();
+      
+      toast.success("Post created successfully!", {
+        description: "Your post has been published to the forum."
+      });
+      
+      // Redirect to the post or home page
+      router.push("/");
+    } catch (error: any) {
+      console.error('Error creating post:', error);
+      setError(error.message || "Failed to create post. Please try again.");
+      toast.error("Failed to create post", {
+        description: error.message || "Please try again."
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground"></div>
+      </div>
+    );
+  }
+
+  if (!session?.user) {
+    return null;
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Header 
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        isSearching={isSearching}
+        currentUser={currentUser}
+        searchPlaceholder="Search posts..."
+      />
+
+      {/* Main Content */}
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="space-y-6">
+          {/* Page Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">Create New Post</h1>
+              <p className="text-muted-foreground mt-1">Share your knowledge with the community</p>
+            </div>
+            <Button variant="outline" onClick={() => router.back()}>
+              <Icon icon="lucide:arrow-left" className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+          </div>
+
+          {/* Create Post Form */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Post Details</CardTitle>
+              <CardDescription>
+                Fill in the details for your new forum post
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                {error && (
+                  <Alert variant="destructive">
+                    <Icon icon="lucide:alert-circle" className="h-4 w-4" />
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+
+                {/* Category Selection */}
+                <div className="space-y-2">
+                  <Label htmlFor="category">Category *</Label>
+                  <Select value={selectedCategoryId} onValueChange={setSelectedCategoryId} required>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a category for your post" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.filter(cat => cat.isActive).map((category) => (
+                        <SelectItem key={category.categoryId} value={category.categoryId.toString()}>
+                          <div className="flex items-center space-x-2">
+                            {category.icon && (
+                              <Icon 
+                                icon={category.icon} 
+                                className="h-4 w-4" 
+                                style={{ color: category.color || "#666" }} 
+                              />
+                            )}
+                            <span>{category.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {selectedCategoryId && (
+                    <p className="text-sm text-muted-foreground">
+                      {categories.find(cat => cat.categoryId.toString() === selectedCategoryId)?.description || "No description available"}
+                    </p>
+                  )}
+                </div>
+
+                {/* Post Title */}
+                <div className="space-y-2">
+                  <Label htmlFor="title">Post Title *</Label>
+                  <Input
+                    id="title"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="Enter a descriptive title for your post"
+                    className="text-lg"
+                    required
+                    minLength={5}
+                    maxLength={200}
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    {title.length}/200 characters
+                  </p>
+                </div>
+
+                {/* Post Content */}
+                <div className="space-y-2">
+                  <Label htmlFor="content">Post Content *</Label>
+                  <Textarea
+                    id="content"
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                    placeholder="Write your post content here. Be detailed and helpful to the community."
+                    className="min-h-[300px] text-base"
+                    required
+                    minLength={10}
+                    maxLength={10000}
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    {content.length}/10,000 characters
+                  </p>
+                </div>
+
+                {/* Form Actions */}
+                <div className="flex items-center justify-end space-x-4 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => router.back()}
+                    disabled={submitting}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={submitting || !title.trim() || !content.trim() || !selectedCategoryId}
+                  >
+                    {submitting ? (
+                      <>
+                        <Icon icon="lucide:loader-2" className="mr-2 h-4 w-4 animate-spin" />
+                        Creating Post...
+                      </>
+                    ) : (
+                      <>
+                        <Icon icon="lucide:plus" className="mr-2 h-4 w-4" />
+                        Create Post
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* Posting Guidelines */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Icon icon="lucide:info" className="h-5 w-5" />
+                <span>Posting Guidelines</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3 text-sm text-muted-foreground">
+                <div className="flex items-start space-x-2">
+                  <Icon icon="lucide:check-circle" className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                  <span>Be respectful and constructive in your posts</span>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <Icon icon="lucide:check-circle" className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                  <span>Use clear, descriptive titles that help others find your post</span>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <Icon icon="lucide:check-circle" className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                  <span>Provide detailed information and context in your content</span>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <Icon icon="lucide:check-circle" className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                  <span>Choose the most appropriate category for your post</span>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <Icon icon="lucide:check-circle" className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                  <span>Search existing posts before creating a new one to avoid duplicates</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </main>
+    </div>
+  );
+}

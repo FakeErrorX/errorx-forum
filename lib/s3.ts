@@ -1,18 +1,34 @@
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
-// S3 Configuration
+// S3 Configuration for Cloudflare R2
+// Validate required environment variables
+const requiredEnvVars = {
+  S3_REGION: process.env.S3_REGION,
+  S3_ENDPOINT: process.env.S3_ENDPOINT,
+  S3_ACCESS_KEY: process.env.S3_ACCESS_KEY,
+  S3_SECRET_KEY: process.env.S3_SECRET_KEY,
+  S3_BUCKET_NAME: process.env.S3_BUCKET_NAME,
+  S3_BUCKET_URL: process.env.S3_BUCKET_URL,
+};
+
+for (const [key, value] of Object.entries(requiredEnvVars)) {
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${key}`);
+  }
+}
+
 const s3Client = new S3Client({
-  region: process.env.S3_REGION || 'eu',
-  endpoint: process.env.S3_ENDPOINT || 'https://eu2.contabostorage.com',
+  region: process.env.S3_REGION!,
+  endpoint: process.env.S3_ENDPOINT!,
   credentials: {
-    accessKeyId: process.env.S3_ACCESS_KEY || '',
-    secretAccessKey: process.env.S3_SECRET_KEY || '',
+    accessKeyId: process.env.S3_ACCESS_KEY!,
+    secretAccessKey: process.env.S3_SECRET_KEY!,
   },
-  forcePathStyle: true, // Required for Contabo and other S3-compatible services
+  forcePathStyle: true, // Required for R2 and other S3-compatible services
 });
 
-const BUCKET_NAME = process.env.S3_BUCKET_NAME || 'errorx';
+const BUCKET_NAME = process.env.S3_BUCKET_NAME!;
 
 // File upload to S3
 export async function uploadToS3(
@@ -32,9 +48,9 @@ export async function uploadToS3(
 
     await s3Client.send(command);
     
-    const publicKey = process.env.S3_PUBLIC_KEY || process.env.S3_ACCESS_KEY || '';
-    const baseUrl = process.env.S3_BUCKET_URL || 'https://eu2.contabostorage.com/errorx';
-    const url = `${baseUrl.replace('/errorx', '')}/${publicKey}:errorx/${key}`;
+    // For Cloudflare R2, use the custom domain
+  const baseUrl = process.env.S3_BUCKET_URL!;
+  const url = `${baseUrl}/${key}`;
     
     return { success: true, url };
   } catch (error) {
@@ -169,14 +185,29 @@ export function generateFileKey(originalName: string, userId: string, folder: st
 
 // Get public URL for file
 export function getPublicUrl(key: string): string {
-  const publicKey = process.env.S3_PUBLIC_KEY || process.env.S3_ACCESS_KEY || '';
-  const baseUrl = process.env.S3_BUCKET_URL || 'https://eu2.contabostorage.com/errorx';
-  return `${baseUrl.replace('/errorx', '')}/${publicKey}:errorx/${key}`;
+  const baseUrl = process.env.S3_BUCKET_URL!;
+  return `${baseUrl}/${key}`;
 }
 
 // Extract S3 key from public URL
 export function extractKeyFromUrl(url: string): string | null {
   try {
+    // Handle custom domain URLs
+    const customDomain = process.env.S3_BUCKET_URL!;
+    if (url.includes(customDomain)) {
+      const urlObj = new URL(url);
+      const pathParts = urlObj.pathname.split('/').filter(Boolean);
+      return pathParts.join('/');
+    }
+    
+    // Handle Cloudflare R2 URLs (default R2 domain)
+    // Format: https://pub-{account-id}.r2.dev/{key}
+    if (url.includes('.r2.dev')) {
+      const urlObj = new URL(url);
+      const pathParts = urlObj.pathname.split('/').filter(Boolean);
+      return pathParts.join('/');
+    }
+    
     // Handle Contabo S3 URLs with access key in path
     // Format: https://eu2.contabostorage.com/{accessKey}:errorx/{key}
     if (url.includes('contabostorage.com') && url.includes(':errorx/')) {
@@ -233,26 +264,3 @@ export const ALLOWED_FILE_TYPES = {
   all: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'pdf', 'doc', 'docx', 'txt', 'md', 'zip', 'rar', '7z', 'tar', 'gz', 'mp4', 'avi', 'mov', 'wmv', 'webm', 'mp3', 'wav', 'ogg', 'm4a']
 };
 
-// Test S3 connection
-export async function testS3Connection(): Promise<{ success: boolean; error?: string }> {
-  try {
-    const command = new HeadObjectCommand({
-      Bucket: BUCKET_NAME,
-      Key: 'test-connection',
-    });
-
-    await s3Client.send(command);
-    return { success: true };
-  } catch (error) {
-    // If the test file doesn't exist, that's actually good - it means we can connect
-    if (error instanceof Error && error.name === 'NotFound') {
-      return { success: true };
-    }
-    
-    console.error('S3 connection test error:', error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Connection test failed' 
-    };
-  }
-}

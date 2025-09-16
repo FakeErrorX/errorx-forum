@@ -239,7 +239,10 @@ export default function HomePage() {
                 {isSearching ? `Search Results (${searchResults.length})` : 'Recent Posts'}
               </h2>
               {session?.user && !isSearching && (
-                <Button className="w-full sm:w-auto">
+                <Button 
+                  className="w-full sm:w-auto"
+                  onClick={() => router.push("/create-post")}
+                >
                   <Icon icon="lucide:plus" className="mr-2 h-4 w-4" />
                   New Post
                 </Button>

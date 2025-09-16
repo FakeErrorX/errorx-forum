@@ -1,6 +1,11 @@
 /** @type {import('next-sitemap').IConfig} */
+// Validate required environment variable
+if (!process.env.SITE_URL) {
+  throw new Error('Missing required environment variable: SITE_URL');
+}
+
 module.exports = {
-  siteUrl: process.env.SITE_URL || 'https://errorx.org',
+  siteUrl: process.env.SITE_URL,
   generateRobotsTxt: true,
   generateIndexSitemap: false,
   exclude: ['/admin/*', '/api/*', '/settings', '/signin', '/signup', '/reset-password'],
@@ -13,7 +18,7 @@ module.exports = {
       },
     ],
     additionalSitemaps: [
-      'https://errorx.org/sitemap.xml',
+      `${process.env.SITE_URL}/sitemap.xml`,
     ],
   },
   transform: async (config, path) => {
