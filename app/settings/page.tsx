@@ -121,7 +121,6 @@ export default function SettingsPage() {
   useEffect(() => {
     try {
       // navigator only exists in browser
-      // eslint-disable-next-line no-undef
       const ua = typeof navigator !== 'undefined' ? navigator.userAgent : null;
       setClientUserAgent(ua);
 

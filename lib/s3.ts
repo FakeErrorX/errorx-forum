@@ -1,5 +1,14 @@
 // Defer AWS SDK imports and env validation until used on the server
-let _s3Client: any | null = null;
+type S3ClientBundle = {
+  s3: import('@aws-sdk/client-s3').S3Client;
+  PutObjectCommand: typeof import('@aws-sdk/client-s3').PutObjectCommand;
+  GetObjectCommand: typeof import('@aws-sdk/client-s3').GetObjectCommand;
+  DeleteObjectCommand: typeof import('@aws-sdk/client-s3').DeleteObjectCommand;
+  HeadObjectCommand: typeof import('@aws-sdk/client-s3').HeadObjectCommand;
+  getSignedUrl: typeof import('@aws-sdk/s3-request-presigner').getSignedUrl;
+};
+
+let _s3Client: S3ClientBundle | null = null;
 async function getS3Client() {
   if (typeof window !== 'undefined') {
     throw new Error('S3 operations are server-side only');
