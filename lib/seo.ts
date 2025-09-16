@@ -1,44 +1,37 @@
 import { DefaultSeoProps } from 'next-seo';
+import { PUBLIC_ENV } from './public-env';
 
-// Validate required environment variables
-const requiredSeoEnvVars = {
-  SITE_URL: process.env.SITE_URL,
-  SITE_NAME: process.env.SITE_NAME,
-  SITE_DESCRIPTION: process.env.SITE_DESCRIPTION,
-  TWITTER_HANDLE: process.env.TWITTER_HANDLE,
-  TWITTER_SITE: process.env.TWITTER_SITE,
-};
-
-for (const [key, value] of Object.entries(requiredSeoEnvVars)) {
-  if (!value) {
-    throw new Error(`Missing required environment variable for SEO: ${key}`);
-  }
-}
+// Use client-safe public envs without throwing at module load
+const SITE_URL = PUBLIC_ENV.SITE_URL;
+const SITE_NAME = PUBLIC_ENV.SITE_NAME;
+const SITE_DESCRIPTION = PUBLIC_ENV.SITE_DESCRIPTION;
+const TWITTER_HANDLE = PUBLIC_ENV.TWITTER_HANDLE;
+const TWITTER_SITE = PUBLIC_ENV.TWITTER_SITE;
 
 export const defaultSEO: DefaultSeoProps = {
-  titleTemplate: `%s | ${process.env.SITE_NAME!}`,
-  defaultTitle: process.env.SITE_NAME!,
-  description: process.env.SITE_DESCRIPTION!,
-  canonical: process.env.SITE_URL!,
+  titleTemplate: `%s | ${SITE_NAME}`,
+  defaultTitle: SITE_NAME,
+  description: SITE_DESCRIPTION,
+  canonical: SITE_URL || undefined,
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: process.env.SITE_URL!,
-    siteName: process.env.SITE_NAME!,
-    title: `${process.env.SITE_NAME!} - Community`,
-    description: process.env.SITE_DESCRIPTION!,
+    url: SITE_URL || undefined,
+    siteName: SITE_NAME,
+    title: `${SITE_NAME} - Community`,
+    description: SITE_DESCRIPTION,
     images: [
       {
-        url: `${process.env.SITE_URL!}/logo-light.png`,
+        url: SITE_URL ? `${SITE_URL}/logo-light.png` : '/logo-light.png',
         width: 1200,
         height: 630,
-        alt: `${process.env.SITE_NAME!} Logo`,
+        alt: `${SITE_NAME} Logo`,
       },
     ],
   },
   twitter: {
-    handle: process.env.TWITTER_HANDLE!,
-    site: process.env.TWITTER_SITE!,
+    handle: TWITTER_HANDLE || undefined,
+    site: TWITTER_SITE || undefined,
     cardType: 'summary_large_image',
   },
   additionalMetaTags: [
@@ -77,8 +70,8 @@ export const defaultSEO: DefaultSeoProps = {
 };
 
 export const generatePageSEO = (title: string, description?: string, path?: string) => {
-  const baseUrl = process.env.SITE_URL!;
-  const url = path ? `${baseUrl}${path}` : baseUrl;
+  const baseUrl = SITE_URL;
+  const url = baseUrl && path ? `${baseUrl}${path}` : baseUrl || undefined;
   
   return {
     title,
@@ -100,8 +93,8 @@ export const generatePageSEO = (title: string, description?: string, path?: stri
 };
 
 export const generatePostSEO = (title: string, description: string, author: string, publishedTime: string, path: string) => {
-  const baseUrl = process.env.SITE_URL!;
-  const url = `${baseUrl}${path}`;
+  const baseUrl = SITE_URL;
+  const url = baseUrl ? `${baseUrl}${path}` : undefined;
   
   return {
     title,

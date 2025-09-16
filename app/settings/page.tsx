@@ -45,6 +45,10 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [clientIp, setClientIp] = useState<string | null>(null);
+  const [clientUserAgent, setClientUserAgent] = useState<string | null>(null);
+  const [clientOs, setClientOs] = useState<string | null>(null);
+  const [clientBrowser, setClientBrowser] = useState<string | null>(null);
 
   // Account settings
   const [name, setName] = useState("");
@@ -97,6 +101,56 @@ export default function SettingsPage() {
 
     loadUserData();
   }, [session, status, router]);
+
+  useEffect(() => {
+    const fetchClientIp = async () => {
+      try {
+        const res = await fetch('/api/ip');
+        if (res.ok) {
+          const data = await res.json();
+          setClientIp(data.ip || null);
+        }
+      } catch (err) {
+        // ignore ip errors silently
+      }
+    };
+
+    fetchClientIp();
+  }, []);
+
+  useEffect(() => {
+    try {
+      // navigator only exists in browser
+      // eslint-disable-next-line no-undef
+      const ua = typeof navigator !== 'undefined' ? navigator.userAgent : null;
+      setClientUserAgent(ua);
+
+      const detectOs = (s: string | null): string | null => {
+        if (!s) return null;
+        if (/Windows NT/i.test(s)) return 'Windows';
+        if (/Android/i.test(s)) return 'Android';
+        if (/(iPhone|iPad|iPod)/i.test(s)) return 'iOS';
+        if (/Mac OS X/i.test(s)) return 'macOS';
+        if (/Linux/i.test(s)) return 'Linux';
+        return 'Unknown';
+      };
+
+      const detectBrowser = (s: string | null): string | null => {
+        if (!s) return null;
+        if (/Edg\//i.test(s)) return 'Edge';
+        if (/OPR\//i.test(s)) return 'Opera';
+        if (/Chrome\//i.test(s) && !/Chromium/i.test(s)) return 'Chrome';
+        if (/Firefox\//i.test(s)) return 'Firefox';
+        if (/Version\/.+Safari/i.test(s) && !/Chrome\//i.test(s)) return 'Safari';
+        return 'Browser';
+      };
+
+      setClientOs(detectOs(ua));
+      setClientBrowser(detectBrowser(ua));
+    } catch (_) {
+      // ignore
+    }
+  }, []);
 
   const handleSaveAccount = async () => {
     setSaving(true);
@@ -520,17 +574,62 @@ export default function SettingsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <Icon icon="lucide:monitor" className="h-5 w-5" />
-                    <div>
-                      <p className="font-medium">Current Session</p>
-                      <p className="text-sm text-muted-foreground">
-                        {new Date().toLocaleString()}
-                      </p>
+                <div className="relative overflow-hidden rounded-lg border bg-gradient-to-br from-background to-muted p-4 shadow-sm transition hover:shadow-md">
+                  <div className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-gradient-to-br from-primary/10 to-primary/0 blur-2xl" />
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary/10 to-primary/20 text-primary ring-1 ring-primary/20">
+                        <Icon
+                          icon={
+                            clientOs === 'Windows' ? 'mdi:microsoft-windows' :
+                            clientOs === 'Android' ? 'mdi:android' :
+                            clientOs === 'iOS' ? 'mdi:apple-ios' :
+                            clientOs === 'macOS' ? 'mdi:apple' :
+                            clientOs === 'Linux' ? 'mdi:linux' : 'lucide:monitor'
+                          }
+                          className="h-4 w-4"
+                        />
+                      </div>
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-sm font-semibold tracking-tight">Current Session</p>
+                        </div>
+                        <p className="text-xs text-muted-foreground">Signed in {new Date().toLocaleString()}</p>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                          {clientIp && (
+                            <span className="inline-flex items-center gap-1 rounded-full border bg-background px-1.5 py-0.5 text-[11px] text-muted-foreground shadow-sm">
+                              <Icon icon="lucide:map-pin" className="h-3 w-3" />
+                              <span className="font-mono">{clientIp}</span>
+                            </span>
+                          )}
+                          {clientBrowser && (
+                            <span className="inline-flex max-w-full items-center gap-1 rounded-full border bg-background px-1.5 py-0.5 text-[11px] text-muted-foreground shadow-sm">
+                              <Icon
+                                icon={
+                                  clientBrowser === 'Chrome' ? 'mdi:google-chrome' :
+                                  clientBrowser === 'Edge' ? 'mdi:microsoft-edge' :
+                                  clientBrowser === 'Firefox' ? 'mdi:firefox' :
+                                  clientBrowser === 'Safari' ? 'simple-icons:safari' :
+                                  clientBrowser === 'Opera' ? 'mdi:opera' : 'lucide:globe'
+                                }
+                                className="h-3 w-3"
+                              />
+                              <span className="truncate max-w-[120px] sm:max-w-[160px]">{clientBrowser}</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="pt-0.5">
+                      <Badge variant="default" className="rounded-full px-2 py-0 text-[10px] leading-4 flex items-center gap-1.5">
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
+                          <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
+                        </span>
+                        Active
+                      </Badge>
                     </div>
                   </div>
-                  <Badge variant="default">Active</Badge>
                 </div>
               </CardContent>
             </Card>

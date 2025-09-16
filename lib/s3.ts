@@ -1,34 +1,46 @@
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-
-// S3 Configuration for Cloudflare R2
-// Validate required environment variables
-const requiredEnvVars = {
-  S3_REGION: process.env.S3_REGION,
-  S3_ENDPOINT: process.env.S3_ENDPOINT,
-  S3_ACCESS_KEY: process.env.S3_ACCESS_KEY,
-  S3_SECRET_KEY: process.env.S3_SECRET_KEY,
-  S3_BUCKET_NAME: process.env.S3_BUCKET_NAME,
-  S3_BUCKET_URL: process.env.S3_BUCKET_URL,
-};
-
-for (const [key, value] of Object.entries(requiredEnvVars)) {
-  if (!value) {
-    throw new Error(`Missing required environment variable: ${key}`);
+// Defer AWS SDK imports and env validation until used on the server
+let _s3Client: any | null = null;
+async function getS3Client() {
+  if (typeof window !== 'undefined') {
+    throw new Error('S3 operations are server-side only');
   }
+  if (_s3Client) return _s3Client;
+
+  const { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, HeadObjectCommand } = await import('@aws-sdk/client-s3');
+  const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner');
+
+  for (const [key, value] of Object.entries({
+    S3_REGION: process.env.S3_REGION,
+    S3_ENDPOINT: process.env.S3_ENDPOINT,
+    S3_ACCESS_KEY: process.env.S3_ACCESS_KEY,
+    S3_SECRET_KEY: process.env.S3_SECRET_KEY,
+    S3_BUCKET_NAME: process.env.S3_BUCKET_NAME,
+    S3_BUCKET_URL: process.env.S3_BUCKET_URL,
+  })) {
+    if (!value) {
+      throw new Error(`Missing required environment variable: ${key}`);
+    }
+  }
+
+  _s3Client = {
+    s3: new S3Client({
+      region: process.env.S3_REGION!,
+      endpoint: process.env.S3_ENDPOINT!,
+      credentials: {
+        accessKeyId: process.env.S3_ACCESS_KEY!,
+        secretAccessKey: process.env.S3_SECRET_KEY!,
+      },
+      forcePathStyle: true,
+    }),
+    PutObjectCommand,
+    GetObjectCommand,
+    DeleteObjectCommand,
+    HeadObjectCommand,
+    getSignedUrl,
+  };
+
+  return _s3Client;
 }
-
-const s3Client = new S3Client({
-  region: process.env.S3_REGION!,
-  endpoint: process.env.S3_ENDPOINT!,
-  credentials: {
-    accessKeyId: process.env.S3_ACCESS_KEY!,
-    secretAccessKey: process.env.S3_SECRET_KEY!,
-  },
-  forcePathStyle: true, // Required for R2 and other S3-compatible services
-});
-
-const BUCKET_NAME = process.env.S3_BUCKET_NAME!;
 
 // File upload to S3
 export async function uploadToS3(
@@ -38,19 +50,20 @@ export async function uploadToS3(
   metadata?: Record<string, string>
 ): Promise<{ success: boolean; url?: string; error?: string }> {
   try {
+    const { s3, PutObjectCommand } = await getS3Client();
     const command = new PutObjectCommand({
-      Bucket: BUCKET_NAME,
+      Bucket: process.env.S3_BUCKET_NAME!,
       Key: key,
       Body: file,
       ContentType: contentType,
       Metadata: metadata,
     });
 
-    await s3Client.send(command);
+    await s3.send(command);
     
     // For Cloudflare R2, use the custom domain
-  const baseUrl = process.env.S3_BUCKET_URL!;
-  const url = `${baseUrl}/${key}`;
+    const baseUrl = process.env.S3_BUCKET_URL!;
+    const url = `${baseUrl}/${key}`;
     
     return { success: true, url };
   } catch (error) {
@@ -69,13 +82,14 @@ export async function generatePresignedUploadUrl(
   expiresIn: number = 3600 // 1 hour
 ): Promise<{ success: boolean; url?: string; error?: string }> {
   try {
+    const { s3, PutObjectCommand, getSignedUrl } = await getS3Client();
     const command = new PutObjectCommand({
-      Bucket: BUCKET_NAME,
+      Bucket: process.env.S3_BUCKET_NAME!,
       Key: key,
       ContentType: contentType,
     });
 
-    const url = await getSignedUrl(s3Client, command, { expiresIn });
+    const url = await getSignedUrl(s3, command, { expiresIn });
     
     return { success: true, url };
   } catch (error) {
@@ -93,12 +107,13 @@ export async function generatePresignedDownloadUrl(
   expiresIn: number = 3600 // 1 hour
 ): Promise<{ success: boolean; url?: string; error?: string }> {
   try {
+    const { s3, GetObjectCommand, getSignedUrl } = await getS3Client();
     const command = new GetObjectCommand({
-      Bucket: BUCKET_NAME,
+      Bucket: process.env.S3_BUCKET_NAME!,
       Key: key,
     });
 
-    const url = await getSignedUrl(s3Client, command, { expiresIn });
+    const url = await getSignedUrl(s3, command, { expiresIn });
     
     return { success: true, url };
   } catch (error) {
@@ -113,12 +128,13 @@ export async function generatePresignedDownloadUrl(
 // Delete file from S3
 export async function deleteFromS3(key: string): Promise<{ success: boolean; error?: string }> {
   try {
+    const { s3, DeleteObjectCommand } = await getS3Client();
     const command = new DeleteObjectCommand({
-      Bucket: BUCKET_NAME,
+      Bucket: process.env.S3_BUCKET_NAME!,
       Key: key,
     });
 
-    await s3Client.send(command);
+    await s3.send(command);
     
     return { success: true };
   } catch (error) {
@@ -133,12 +149,13 @@ export async function deleteFromS3(key: string): Promise<{ success: boolean; err
 // Check if file exists in S3
 export async function fileExists(key: string): Promise<boolean> {
   try {
+    const { s3, HeadObjectCommand } = await getS3Client();
     const command = new HeadObjectCommand({
-      Bucket: BUCKET_NAME,
+      Bucket: process.env.S3_BUCKET_NAME!,
       Key: key,
     });
 
-    await s3Client.send(command);
+    await s3.send(command);
     return true;
   } catch (error) {
     return false;
@@ -148,12 +165,13 @@ export async function fileExists(key: string): Promise<boolean> {
 // Get file metadata
 export async function getFileMetadata(key: string): Promise<{ success: boolean; metadata?: Record<string, unknown>; error?: string }> {
   try {
+    const { s3, HeadObjectCommand } = await getS3Client();
     const command = new HeadObjectCommand({
-      Bucket: BUCKET_NAME,
+      Bucket: process.env.S3_BUCKET_NAME!,
       Key: key,
     });
 
-    const response = await s3Client.send(command);
+    const response = await s3.send(command);
     
     return { 
       success: true, 
@@ -185,53 +203,36 @@ export function generateFileKey(originalName: string, userId: string, folder: st
 
 // Get public URL for file
 export function getPublicUrl(key: string): string {
-  const baseUrl = process.env.S3_BUCKET_URL!;
-  return `${baseUrl}/${key}`;
+  const baseUrl = process.env.S3_BUCKET_URL || '';
+  return baseUrl ? `${baseUrl}/${key}` : key;
 }
 
 // Extract S3 key from public URL
 export function extractKeyFromUrl(url: string): string | null {
   try {
-    // Handle custom domain URLs
-    const customDomain = process.env.S3_BUCKET_URL!;
-    if (url.includes(customDomain)) {
-      const urlObj = new URL(url);
-      const pathParts = urlObj.pathname.split('/').filter(Boolean);
-      return pathParts.join('/');
-    }
-    
-    // Handle Cloudflare R2 URLs (default R2 domain)
-    // Format: https://pub-{account-id}.r2.dev/{key}
-    if (url.includes('.r2.dev')) {
-      const urlObj = new URL(url);
-      const pathParts = urlObj.pathname.split('/').filter(Boolean);
-      return pathParts.join('/');
-    }
-    
-    // Handle Contabo S3 URLs with access key in path
-    // Format: https://eu2.contabostorage.com/{accessKey}:errorx/{key}
-    if (url.includes('contabostorage.com') && url.includes(':errorx/')) {
-      const urlParts = url.split('/');
-      const keyIndex = urlParts.findIndex(part => part.includes(':errorx'));
-      if (keyIndex !== -1 && keyIndex + 1 < urlParts.length) {
-        return urlParts.slice(keyIndex + 1).join('/');
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname;
+    const pathParts = urlObj.pathname.split('/').filter(Boolean);
+
+    // Contabo special handling
+    if (hostname.includes('contabostorage.com')) {
+      const keyIndex = pathParts.findIndex(part => part.includes(':errorx'));
+      if (keyIndex !== -1 && keyIndex + 1 < pathParts.length) {
+        return pathParts.slice(keyIndex + 1).join('/');
       }
+      return pathParts.join('/') || null;
     }
-    
-    // Handle standard S3 URLs
-    // Format: https://bucket.s3.region.amazonaws.com/key or https://s3.region.amazonaws.com/bucket/key
-    if (url.includes('amazonaws.com')) {
-      const urlObj = new URL(url);
-      const pathParts = urlObj.pathname.split('/').filter(Boolean);
-      
-      // Remove bucket name if it's the first part
+
+    // Amazon S3 hostnames
+    if (hostname.includes('amazonaws.com')) {
       if (pathParts.length > 1) {
         return pathParts.slice(1).join('/');
       }
-      return pathParts.join('/');
+      return pathParts.join('/') || null;
     }
-    
-    return null;
+
+    // Generic case: custom domain or r2.dev
+    return pathParts.join('/') || null;
   } catch (error) {
     console.error('Error extracting key from URL:', error);
     return null;
