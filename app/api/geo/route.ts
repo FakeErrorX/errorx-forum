@@ -10,6 +10,22 @@ function getFirstIp(value: string | null): string | null {
   return first || null;
 }
 
+function resolveCountryCode(headers: Headers): { countryCode: string | null; countryHeader: string | null } {
+  const candidates: Array<{ name: string; getter: () => string | null }> = [
+    { name: 'cf-ipcountry', getter: () => headers.get('cf-ipcountry') },
+    { name: 'x-vercel-ip-country', getter: () => headers.get('x-vercel-ip-country') },
+    { name: 'fastly-client-country-code', getter: () => headers.get('fastly-client-country-code') },
+    { name: 'x-geo-country', getter: () => headers.get('x-geo-country') },
+    { name: 'x-country-code', getter: () => headers.get('x-country-code') },
+  ];
+
+  for (const c of candidates) {
+    const val = c.getter();
+    if (val) return { countryCode: val.toUpperCase(), countryHeader: c.name };
+  }
+  return { countryCode: null, countryHeader: null };
+}
+
 function resolveClientIp(request: NextRequest) {
   const headers = request.headers;
 
@@ -49,6 +65,8 @@ function resolveClientIp(request: NextRequest) {
     source = ip ? 'x-vercel-proxied-for' : null;
   }
 
+  const { countryCode, countryHeader } = resolveCountryCode(headers);
+
   // Build a minimal response payload including raw values for debugging
   const allHeaders = {
     'cf-connecting-ip': headers.get('cf-connecting-ip') || undefined,
@@ -60,9 +78,15 @@ function resolveClientIp(request: NextRequest) {
     'x-cluster-client-ip': headers.get('x-cluster-client-ip') || undefined,
     forwarded: headers.get('forwarded') || undefined,
     'x-vercel-proxied-for': headers.get('x-vercel-proxied-for') || undefined,
+    // country related
+    'cf-ipcountry': headers.get('cf-ipcountry') || undefined,
+    'x-vercel-ip-country': headers.get('x-vercel-ip-country') || undefined,
+    'fastly-client-country-code': headers.get('fastly-client-country-code') || undefined,
+    'x-geo-country': headers.get('x-geo-country') || undefined,
+    'x-country-code': headers.get('x-country-code') || undefined,
   } as const;
 
-  return { ip: ip || null, source, headers: allHeaders };
+  return { ip: ip || null, source, countryCode, countryHeader, headers: allHeaders };
 }
 
 export async function GET(request: NextRequest) {

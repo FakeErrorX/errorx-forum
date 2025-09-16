@@ -49,6 +49,7 @@ export default function SettingsPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [clientIp, setClientIp] = useState<string | null>(null);
+  const [clientCountryCode, setClientCountryCode] = useState<string | null>(null);
   const [clientUserAgent, setClientUserAgent] = useState<string | null>(null);
   const [clientOs, setClientOs] = useState<string | null>(null);
   const [clientBrowser, setClientBrowser] = useState<string | null>(null);
@@ -140,10 +141,11 @@ export default function SettingsPage() {
   useEffect(() => {
     const fetchClientIp = async () => {
       try {
-        const res = await fetch('/api/ip');
+        const res = await fetch('/api/geo');
         if (res.ok) {
           const data = await res.json();
           setClientIp(data.ip || null);
+          setClientCountryCode(data.countryCode || null);
         }
       } catch (err) {
         // ignore ip errors silently
@@ -639,7 +641,11 @@ export default function SettingsPage() {
                         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                           {clientIp && (
                             <span className="inline-flex items-center gap-1 rounded-full border bg-background px-1.5 py-0.5 text-[11px] text-muted-foreground shadow-sm">
-                              <Icon icon="lucide:map-pin" className="h-3 w-3" />
+                              {clientCountryCode ? (
+                                <Icon icon={`circle-flags:${clientCountryCode.toLowerCase()}`} className="h-3 w-3" />
+                              ) : (
+                                <Icon icon="lucide:map-pin" className="h-3 w-3" />
+                              )}
                               <span className="font-mono">{clientIp}</span>
                             </span>
                           )}
