@@ -18,6 +18,8 @@ import {
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Icon } from '@iconify/react';
 import { ModeToggle } from "@/components/mode-toggle";
+import { UserRoleBadge } from "@/components/auth/user-role-badge";
+import { AdminOnly } from "@/components/auth/role-guard";
 
 interface User {
   name: string;
@@ -73,6 +75,12 @@ export default function Header({ searchQuery, setSearchQuery, isSearching, curre
               <Icon icon="lucide:users" className="h-4 w-4 mr-2" />
               Members
             </Button>
+            <AdminOnly>
+              <Button variant="ghost" onClick={() => router.push("/admin")} className="hidden sm:flex">
+                <Icon icon="lucide:shield" className="h-4 w-4 mr-2" />
+                Admin
+              </Button>
+            </AdminOnly>
           </div>
           
           {/* Desktop Search and User Menu */}
@@ -110,7 +118,10 @@ export default function Header({ searchQuery, setSearchQuery, isSearching, curre
                   <DropdownMenuContent className="w-56" align="end" forceMount>
                     <DropdownMenuLabel className="font-normal">
                       <div className="flex flex-col space-y-1">
-                        <p className="text-sm font-medium leading-none">{currentUser?.name || session.user.name}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium leading-none">{currentUser?.name || session.user.name}</p>
+                          <UserRoleBadge className="text-xs" />
+                        </div>
                         <p className="text-xs leading-none text-muted-foreground">
                           {currentUser?.username ? `@${currentUser.username}` : session.user.email}
                         </p>
@@ -125,6 +136,12 @@ export default function Header({ searchQuery, setSearchQuery, isSearching, curre
                       <Icon icon="lucide:settings" className="mr-2 h-4 w-4" />
                       <span>Settings</span>
                     </DropdownMenuItem>
+                    <AdminOnly>
+                      <DropdownMenuItem onClick={() => router.push("/admin")}>
+                        <Icon icon="lucide:shield" className="mr-2 h-4 w-4" />
+                        <span>Admin Panel</span>
+                      </DropdownMenuItem>
+                    </AdminOnly>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleLogout}>
                       <Icon icon="lucide:log-out" className="mr-2 h-4 w-4" />
@@ -188,6 +205,19 @@ export default function Header({ searchQuery, setSearchQuery, isSearching, curre
                       <Icon icon="lucide:users" className="h-4 w-4 mr-2" />
                       Members
                     </Button>
+                    <AdminOnly>
+                      <Button 
+                        variant="ghost" 
+                        onClick={() => {
+                          router.push("/admin");
+                          setIsMobileMenuOpen(false);
+                        }}
+                        className="w-full justify-start"
+                      >
+                        <Icon icon="lucide:shield" className="h-4 w-4 mr-2" />
+                        Admin Panel
+                      </Button>
+                    </AdminOnly>
                   </div>
 
                   {/* Mobile User Menu */}

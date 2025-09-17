@@ -8,6 +8,7 @@ export interface PostWithRelations {
   authorId: string; // Internal database ID (hidden from API)
   authorUsername: string;
   isPinned: boolean;
+  isFeatured?: boolean;
   isLocked: boolean;
   views: number;
   likes: number;

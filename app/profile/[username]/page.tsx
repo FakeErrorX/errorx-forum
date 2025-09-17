@@ -12,8 +12,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Icon } from '@iconify/react';
+import { FollowIgnoreButtons } from '@/components/ui/follow-ignore-buttons'
 
 interface PublicUser {
+  id?: string;
   userId: number; // Custom sequential user ID (only public ID)
   name: string | null;
   username: string | null;
@@ -245,6 +247,9 @@ export default function PublicProfilePage() {
                   <div className="flex items-center">
                     <Icon icon="lucide:star" className="h-4 w-4 mr-1" />
                     {user.reputation} reputation
+                  </div>
+                  <div className="ml-auto">
+                    <FollowIgnoreButtons targetUserId={user.id || ''} />
                   </div>
                 </div>
               </div>

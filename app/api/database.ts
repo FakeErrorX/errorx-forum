@@ -85,17 +85,22 @@ export const createPost = async (postData: Omit<ForumPost, 'id' | 'postId' | 'cr
   }
 };
 
-export const getPosts = async (limit: number = 25, offset: number = 0, categoryId?: string, authorId?: string) => {
+export const getPosts = async (limit: number = 25, offset: number = 0, categoryId?: string, authorId?: string, featuredOnly?: boolean) => {
   try {
-    const where: Record<string, string> = {};
+    const where: {
+      categoryId?: string;
+      authorId?: string;
+      isFeatured?: boolean;
+    } = {};
     if (categoryId) where.categoryId = categoryId;
     if (authorId) where.authorId = authorId;
+    if (featuredOnly) where.isFeatured = true;
     
     const posts = await prisma.post.findMany({
       where,
       take: limit,
       skip: offset,
-      orderBy: { createdAt: 'desc' },
+      orderBy: featuredOnly ? [{ featuredAt: 'desc' }] : { createdAt: 'desc' },
       include: {
         author: true,
         category: true,

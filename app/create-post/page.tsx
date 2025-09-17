@@ -46,6 +46,8 @@ export default function CreatePostPage() {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
+  const [prefixes, setPrefixes] = useState<{ id: string; name: string; color?: string }[]>([]);
+  const [selectedPrefixId, setSelectedPrefixId] = useState<string>("");
 
   // Form validation
   const {
@@ -102,6 +104,20 @@ export default function CreatePostPage() {
     }
   };
 
+  // Load prefixes (optionally by category)
+  const loadPrefixes = async (categoryId?: string) => {
+    try {
+      const url = categoryId ? `/api/prefixes?categoryId=${encodeURIComponent(categoryId)}` : '/api/prefixes'
+      const response = await fetch(url)
+      if (response.ok) {
+        const data = await response.json()
+        setPrefixes(data.prefixes || [])
+      }
+    } catch (error) {
+      console.error('Error loading prefixes:', error)
+    }
+  }
+
   useEffect(() => {
     if (status === "loading") return;
     
@@ -112,12 +128,43 @@ export default function CreatePostPage() {
 
     const initializeData = async () => {
       await loadCategories();
+      await loadPrefixes();
       await loadCurrentUser();
       setLoading(false);
     };
     
     initializeData();
   }, [status, session, router]);
+
+  // Draft autosave (title/content/category/prefix)
+  useEffect(() => {
+    const handle = setTimeout(async () => {
+      if (!session?.user) return
+      if (!values.title && !values.content) return
+      try {
+        await fetch('/api/drafts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'post',
+            categoryId: values.categoryId || undefined,
+            content: JSON.stringify({ title: values.title, content: values.content, prefixId: selectedPrefixId || undefined })
+          })
+        })
+      } catch (e) {
+        // ignore autosave errors
+      }
+    }, 2000)
+    return () => clearTimeout(handle)
+  }, [values.title, values.content, values.categoryId, selectedPrefixId, session])
+
+  // When category changes, load its prefixes
+  useEffect(() => {
+    if (values.categoryId) {
+      loadPrefixes(values.categoryId)
+      setSelectedPrefixId("")
+    }
+  }, [values.categoryId])
 
   // Create post function
   const handleCreatePost = async (values: { title: string; content: string; categoryId: string }) => {
@@ -131,6 +178,7 @@ export default function CreatePostPage() {
           title: values.title.trim(),
           content: values.content.trim(),
           categoryId: values.categoryId,
+          prefixId: selectedPrefixId || undefined,
         }),
       });
 
@@ -245,6 +293,26 @@ export default function CreatePostPage() {
                     <p className="text-sm text-red-500">{errors.categoryId}</p>
                   )}
                 </div>
+
+              {/* Thread Prefix (optional) */}
+              <div className="space-y-2">
+                <Label htmlFor="prefix">Thread Prefix</Label>
+                <Select value={selectedPrefixId} onValueChange={setSelectedPrefixId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={prefixes.length ? "Select a prefix (optional)" : "No prefixes available"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {prefixes.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        <div className="flex items-center gap-2">
+                          <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: p.color || '#999' }} />
+                          <span>{p.name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
                 {/* Post Title */}
                 <div className="space-y-2">

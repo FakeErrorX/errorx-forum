@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateOrigin, createSecureErrorResponse } from './lib/api-security';
+import { getToken } from 'next-auth/jwt';
+import { hasPermission, PERMISSIONS } from './lib/permissions';
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   // Only apply to API routes
   if (request.nextUrl.pathname.startsWith('/api/')) {
     // Block direct browser navigations to API endpoints (avoid exposing JSON in browser)
@@ -29,6 +31,24 @@ export function middleware(request: NextRequest) {
         'Access denied. API access is restricted to authorized domains only.',
         403
       );
+    }
+
+    // Check admin route access
+    if (request.nextUrl.pathname.startsWith('/api/admin/')) {
+      const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+      const userId = (token as unknown as { id?: string; userId?: string } | null)?.userId || (token as unknown as { id?: string } | null)?.id;
+      if (!userId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+
+      // Check if user has admin access
+      const permissionCheck = await hasPermission(userId, PERMISSIONS.ADMIN_ACCESS);
+      if (!permissionCheck.hasPermission) {
+        return NextResponse.json({ 
+          error: 'Insufficient permissions',
+          details: `Required: ${permissionCheck.requiredPermission}, User role: ${permissionCheck.userRole}`
+        }, { status: 403 });
+      }
     }
     
     // Allow the request and add CORS headers

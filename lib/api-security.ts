@@ -54,6 +54,10 @@ export function createSecureResponse(data: unknown, status: number = 200): NextR
  * Validate request origin
  */
 export function validateOrigin(request: Request): boolean {
+  // In development, allow all origins to ease local testing
+  if (process.env.NODE_ENV !== 'production') {
+    return true;
+  }
   const origin = request.headers.get('origin');
   const referer = request.headers.get('referer');
   const host = request.headers.get('host');

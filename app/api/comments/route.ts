@@ -88,6 +88,28 @@ export async function POST(request: NextRequest) {
       likes: 0,
     });
 
+    // Mentions notifications: find @username and notify
+    try {
+      const mentionRegex = /@([a-zA-Z0-9_]+)/g
+      const matches = content.matchAll(mentionRegex)
+      const usernames = Array.from(matches, (m: RegExpMatchArray) => m[1]).filter(Boolean)
+      if (usernames.length) {
+        const { prisma } = await import('@/lib/prisma')
+        const mentionedUsers = await prisma.user.findMany({ where: { username: { in: usernames } }, select: { id: true } })
+        await prisma.notification.createMany({
+          data: mentionedUsers.map(u => ({
+            userId: u.id,
+            type: 'mention',
+            title: 'You were mentioned in a comment',
+            message: content.slice(0, 140),
+            data: { postId, kind: 'comment' }
+          }))
+        })
+      }
+    } catch (e) {
+      console.error('Mention notification failed:', e)
+    }
+
     // Transform comment to hide internal IDs and use custom IDs
     const cleanComment = {
       commentId: (comment as CommentWithRelations).commentId,

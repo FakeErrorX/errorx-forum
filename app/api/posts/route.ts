@@ -20,13 +20,14 @@ export async function GET(request: NextRequest) {
     }), searchParams);
     
     const { limit, offset, categoryId, authorId, search } = queryParams;
+    const featureFilter = searchParams.get('featured')
 
     let posts;
     if (search) {
       const { searchPosts } = await import("../database");
       posts = await searchPosts(search, limit);
     } else {
-      posts = await getPosts(limit, offset, categoryId, authorId);
+      posts = await getPosts(limit, offset, categoryId, authorId, featureFilter === 'true');
     }
     
     // Transform posts to hide internal IDs and use custom IDs
@@ -38,6 +39,7 @@ export async function GET(request: NextRequest) {
       authorId: post.author.userId,
       authorUsername: post.authorUsername,
       isPinned: post.isPinned,
+      isFeatured: (post as PostWithRelations).isFeatured,
       isLocked: post.isLocked,
       views: post.views,
       likes: post.likes,
@@ -121,6 +123,28 @@ export async function POST(request: NextRequest) {
       replies: 0,
     });
 
+    // Mentions notifications in post content
+    try {
+      const mentionRegex = /@([a-zA-Z0-9_]+)/g
+      const matches = content.matchAll(mentionRegex)
+      const usernames = Array.from(matches, (m: RegExpMatchArray) => m[1]).filter(Boolean)
+      if (usernames.length) {
+        const { prisma } = await import('@/lib/prisma')
+        const mentionedUsers = await prisma.user.findMany({ where: { username: { in: usernames } }, select: { id: true } })
+        await prisma.notification.createMany({
+          data: mentionedUsers.map(u => ({
+            userId: u.id,
+            type: 'mention',
+            title: 'You were mentioned in a post',
+            message: content.slice(0, 140),
+            data: { postId: (post as PostWithRelations).id, kind: 'post' }
+          }))
+        })
+      }
+    } catch (e) {
+      console.error('Mention notification failed:', e)
+    }
+
     // Transform post to hide internal IDs and use custom IDs
     const cleanPost = {
       postId: (post as PostWithRelations).postId,
@@ -131,6 +155,7 @@ export async function POST(request: NextRequest) {
       authorUsername: post.authorUsername,
       isPinned: post.isPinned,
       isLocked: post.isLocked,
+      poll: undefined,
       views: post.views,
       likes: post.likes,
       replies: post.replies,

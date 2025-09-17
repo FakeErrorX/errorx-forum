@@ -11,6 +11,7 @@ import { Icon } from '@iconify/react';
 import Header from "@/components/layout/header";
 import { PageSEO } from "@/components/seo/page-seo";
 import { OrganizationSchema, WebsiteSchema } from "@/components/seo/structured-data";
+import { PostCard } from "@/components/ui/post-card";
 
 interface User {
   name: string;
@@ -40,6 +41,7 @@ interface ForumPost {
   authorId: number; // Custom sequential user ID
   authorUsername: string;
   isPinned: boolean;
+  isFeatured?: boolean;
   isLocked: boolean;
   views: number;
   likes: number;
@@ -250,65 +252,48 @@ export default function HomePage() {
             </div>
 
             <Tabs defaultValue="recent" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="recent" className="text-xs sm:text-sm">Recent</TabsTrigger>
+                <TabsTrigger value="featured" className="text-xs sm:text-sm">Featured</TabsTrigger>
                 <TabsTrigger value="trending" className="text-xs sm:text-sm">Trending</TabsTrigger>
                 <TabsTrigger value="pinned" className="text-xs sm:text-sm">Pinned</TabsTrigger>
               </TabsList>
+              <TabsContent value="featured" className="space-y-3 sm:space-y-4">
+                {posts.filter(post => post.isFeatured).length > 0 ? (
+                  posts.filter(post => post.isFeatured).map((post) => {
+                    const category = getCategoryById(post.categoryId);
+                    return (
+                      <PostCard
+                        key={post.postId}
+                        post={post}
+                        category={category || null}
+                        onAuthorClick={(username) => router.push(`/${username}`)}
+                        onPostClick={() => router.push(`/posts/${post.postId}`)}
+                        formatTimeAgo={formatTimeAgo}
+                      />
+                    );
+                  })
+                ) : (
+                  <div className="text-center py-6 sm:py-8 text-muted-foreground">
+                    <Icon icon="lucide:flame" className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-3 sm:mb-4 text-muted-foreground/50" />
+                    <p className="text-sm sm:text-base">No featured posts yet</p>
+                  </div>
+                )}
+              </TabsContent>
 
               <TabsContent value="recent" className="space-y-3 sm:space-y-4">
                 {(isSearching ? searchResults : posts).length > 0 ? (
                   (isSearching ? searchResults : posts).map((post) => {
                     const category = getCategoryById(post.categoryId);
                     return (
-                      <Card key={post.postId} className="hover:shadow-md transition-shadow">
-                        <CardContent className="p-4 sm:p-6">
-                          <div className="flex items-start space-x-3 sm:space-x-4">
-                            <Avatar className="h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0">
-                              <AvatarImage src="" alt={post.authorUsername} />
-                              <AvatarFallback className="text-xs sm:text-sm">{post.authorUsername.charAt(0).toUpperCase()}</AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex flex-wrap items-center gap-2 mb-2">
-                                {post.isPinned && (
-                                  <Badge variant="secondary" className="text-xs">
-                                    <Icon icon="lucide:star" className="h-3 w-3 mr-1" />
-                                    Pinned
-                                  </Badge>
-                                )}
-                                {category && (
-                                  <Badge variant="outline" className="text-xs">
-                                    {category.name}
-                                  </Badge>
-                                )}
-                              </div>
-                              <h3 className="font-medium text-foreground hover:text-primary cursor-pointer text-sm sm:text-base line-clamp-2">
-                                {post.title}
-                              </h3>
-                              <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-2 text-xs sm:text-sm text-muted-foreground">
-                                <span>by <button 
-                                  onClick={() => router.push(`/${post.authorUsername}`)}
-                                  className="text-primary hover:underline"
-                                >
-                                  {post.authorUsername}
-                                </button></span>
-                                <span className="flex items-center">
-                                  <Icon icon="lucide:clock" className="h-3 w-3 mr-1" />
-                                  {formatTimeAgo(post.createdAt)}
-                                </span>
-                                <span className="hidden sm:inline">{post.replies} replies</span>
-                                <span className="hidden sm:inline">{post.views} views</span>
-                                <span className="hidden sm:inline">{post.likes} likes</span>
-                                <div className="flex sm:hidden gap-3 text-xs">
-                                  <span>{post.replies}</span>
-                                  <span>{post.views}</span>
-                                  <span>{post.likes}</span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
+                      <PostCard
+                        key={post.postId}
+                        post={post}
+                        category={category || null}
+                        onAuthorClick={(username) => router.push(`/${username}`)}
+                        onPostClick={() => router.push(`/posts/${post.postId}`)}
+                        formatTimeAgo={formatTimeAgo}
+                      />
                     );
                   })
                 ) : (
@@ -331,52 +316,14 @@ export default function HomePage() {
                   posts.filter(post => post.isPinned).map((post) => {
                     const category = getCategoryById(post.categoryId);
                     return (
-                      <Card key={post.postId} className="hover:shadow-md transition-shadow">
-                        <CardContent className="p-4 sm:p-6">
-                          <div className="flex items-start space-x-3 sm:space-x-4">
-                            <Avatar className="h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0">
-                              <AvatarImage src="" alt={post.authorUsername} />
-                              <AvatarFallback className="text-xs sm:text-sm">{post.authorUsername.charAt(0).toUpperCase()}</AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex flex-wrap items-center gap-2 mb-2">
-                                <Badge variant="secondary" className="text-xs">
-                                  <Icon icon="lucide:star" className="h-3 w-3 mr-1" />
-                                  Pinned
-                                </Badge>
-                                {category && (
-                                  <Badge variant="outline" className="text-xs">
-                                    {category.name}
-                                  </Badge>
-                                )}
-                              </div>
-                              <h3 className="font-medium text-foreground hover:text-primary cursor-pointer text-sm sm:text-base line-clamp-2">
-                                {post.title}
-                              </h3>
-                              <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-2 text-xs sm:text-sm text-muted-foreground">
-                                <span>by <button 
-                                  onClick={() => router.push(`/${post.authorUsername}`)}
-                                  className="text-primary hover:underline"
-                                >
-                                  {post.authorUsername}
-                                </button></span>
-                                <span className="flex items-center">
-                                  <Icon icon="lucide:clock" className="h-3 w-3 mr-1" />
-                                  {formatTimeAgo(post.createdAt)}
-                                </span>
-                                <span className="hidden sm:inline">{post.replies} replies</span>
-                                <span className="hidden sm:inline">{post.views} views</span>
-                                <span className="hidden sm:inline">{post.likes} likes</span>
-                                <div className="flex sm:hidden gap-3 text-xs">
-                                  <span>{post.replies}</span>
-                                  <span>{post.views}</span>
-                                  <span>{post.likes}</span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
+                      <PostCard
+                        key={post.postId}
+                        post={post}
+                        category={category || null}
+                        onAuthorClick={(username) => router.push(`/${username}`)}
+                        onPostClick={() => router.push(`/posts/${post.postId}`)}
+                        formatTimeAgo={formatTimeAgo}
+                      />
                     );
                   })
                 ) : (

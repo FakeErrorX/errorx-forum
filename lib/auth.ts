@@ -104,7 +104,18 @@ export const authOptions: NextAuthOptions = {
           // Always fetch the userId from database for OAuth users
           const dbUser = await prisma.user.findUnique({
             where: { email: user.email! },
-            select: { userId: true, username: true }
+            select: { 
+              userId: true, 
+              username: true,
+              role: {
+                select: {
+                  id: true,
+                  name: true,
+                  displayName: true,
+                  color: true
+                }
+              }
+            }
           });
           
           if (dbUser) {
@@ -124,11 +135,31 @@ export const authOptions: NextAuthOptions = {
             
             token.id = (dbUser as { userId: number }).userId.toString()
             token.userId = (dbUser as { userId: number }).userId.toString()
+            token.role = dbUser.role
           }
         } else {
           // Credentials provider - user.id is already the userId
           token.id = user.id
           token.userId = user.id
+          
+          // Fetch role information for credentials users
+          const dbUser = await prisma.user.findUnique({
+            where: { id: user.id },
+            select: {
+              role: {
+                select: {
+                  id: true,
+                  name: true,
+                  displayName: true,
+                  color: true
+                }
+              }
+            }
+          });
+          
+          if (dbUser) {
+            token.role = dbUser.role
+          }
         }
       }
       return token
@@ -137,6 +168,8 @@ export const authOptions: NextAuthOptions = {
       if (token && session.user) {
         (session.user as { id: string }).id = token.id as string // Custom userId      
         (session.user as { userId: string }).userId = token.userId as string // Also expose as userId
+        type RoleShape = { id: string; name: string; displayName: string; color?: string | null }
+        ;(session.user as { role?: RoleShape }).role = token.role as RoleShape | undefined // Add role information
       }
       return session
     },
