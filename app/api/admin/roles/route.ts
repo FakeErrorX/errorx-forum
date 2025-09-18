@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { hasPermission, PERMISSIONS } from '@/lib/permissions'
+import { hasEnhancedPermission, ENHANCED_PERMISSIONS } from '@/lib/permissions'
 import { z } from 'zod'
 
 // Validation schemas
@@ -29,11 +29,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if user has permission to view roles
-    const permissionCheck = await hasPermission(su.id, PERMISSIONS.ADMIN_ROLES_MANAGE)
-    if (!permissionCheck.hasPermission) {
+    const hasAccess = await hasEnhancedPermission(su.id, ENHANCED_PERMISSIONS.ADMIN.MANAGE_ROLES)
+    if (!hasAccess) {
       return NextResponse.json({ 
         error: 'Insufficient permissions',
-        details: `Required: ${permissionCheck.requiredPermission}, User role: ${permissionCheck.userRole}`
+        details: `Required: ${ENHANCED_PERMISSIONS.ADMIN.MANAGE_ROLES}`
       }, { status: 403 })
     }
 
@@ -73,11 +73,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user has permission to create roles
-    const permissionCheck = await hasPermission(su.id, PERMISSIONS.ADMIN_ROLES_MANAGE)
-    if (!permissionCheck.hasPermission) {
+    const hasAccess = await hasEnhancedPermission(su.id, ENHANCED_PERMISSIONS.ADMIN.MANAGE_ROLES)
+    if (!hasAccess) {
       return NextResponse.json({ 
         error: 'Insufficient permissions',
-        details: `Required: ${permissionCheck.requiredPermission}, User role: ${permissionCheck.userRole}`
+        details: `Required: ${ENHANCED_PERMISSIONS.ADMIN.MANAGE_ROLES}`
       }, { status: 403 })
     }
 
@@ -165,11 +165,11 @@ export async function PUT(request: NextRequest) {
     }
 
     // Check if user has permission to update roles
-    const permissionCheck = await hasPermission(su.id, PERMISSIONS.ADMIN_ROLES_MANAGE)
-    if (!permissionCheck.hasPermission) {
+    const hasAccess = await hasEnhancedPermission(su.id, ENHANCED_PERMISSIONS.ADMIN.MANAGE_ROLES)
+    if (!hasAccess) {
       return NextResponse.json({ 
         error: 'Insufficient permissions',
-        details: `Required: ${permissionCheck.requiredPermission}, User role: ${permissionCheck.userRole}`
+        details: `Required: ${ENHANCED_PERMISSIONS.ADMIN.MANAGE_ROLES}`
       }, { status: 403 })
     }
 

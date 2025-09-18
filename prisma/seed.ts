@@ -2,210 +2,684 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
-async function main() {
-  console.log('🌱 Seeding database with default roles and permissions...')
+// Enhanced permission definitions
+const ENHANCED_PERMISSIONS = {
+  // General permissions
+  GENERAL: {
+    VIEW_FORUM: 'general.view_forum',
+    SEARCH: 'general.search',
+    VIEW_PROFILES: 'general.view_profiles',
+    VIEW_MEMBER_LIST: 'general.view_member_list',
+    BYPASS_FLOOD_CHECK: 'general.bypass_flood_check',
+    BYPASS_USER_PRIVACY: 'general.bypass_user_privacy',
+  },
 
-  // Create default permissions
-  const permissions = [
-    // Admin permissions
-    { name: 'admin.access', displayName: 'Access Admin Panel', description: 'Access to admin dashboard and tools', category: 'admin' },
-    { name: 'admin.users.manage', displayName: 'Manage Users', description: 'Create, edit, and delete user accounts', category: 'admin' },
-    { name: 'admin.roles.manage', displayName: 'Manage Roles', description: 'Create, edit, and delete roles and permissions', category: 'admin' },
-    { name: 'admin.categories.manage', displayName: 'Manage Categories', description: 'Create, edit, and delete forum categories', category: 'admin' },
-    { name: 'admin.settings.manage', displayName: 'Manage Settings', description: 'Access and modify system settings', category: 'admin' },
-    { name: 'admin.analytics.view', displayName: 'View Analytics', description: 'Access to analytics and reports', category: 'admin' },
+  // Profile permissions
+  PROFILE: {
+    EDIT_OWN_PROFILE: 'profile.edit_own',
+    CHANGE_USERNAME: 'profile.change_username',
+    CHANGE_TITLE: 'profile.change_title',
+    UPLOAD_AVATAR: 'profile.upload_avatar',
+    USE_SIGNATURE: 'profile.use_signature',
+    POST_ON_PROFILES: 'profile.post_on_profiles',
+    EDIT_PROFILE_POSTS: 'profile.edit_profile_posts',
+    DELETE_PROFILE_POSTS: 'profile.delete_profile_posts',
+  },
 
-    // Post permissions
-    { name: 'posts.create', displayName: 'Create Posts', description: 'Create new forum posts', category: 'posts' },
-    { name: 'posts.edit.own', displayName: 'Edit Own Posts', description: 'Edit posts created by the user', category: 'posts' },
-    { name: 'posts.edit.all', displayName: 'Edit All Posts', description: 'Edit any post in the forum', category: 'posts' },
-    { name: 'posts.delete.own', displayName: 'Delete Own Posts', description: 'Delete posts created by the user', category: 'posts' },
-    { name: 'posts.delete.all', displayName: 'Delete All Posts', description: 'Delete any post in the forum', category: 'posts' },
-    { name: 'posts.pin', displayName: 'Pin Posts', description: 'Pin posts to the top of categories', category: 'posts' },
-    { name: 'posts.feature', displayName: 'Feature Posts', description: 'Mark posts as featured and set featured order', category: 'posts' },
-    { name: 'posts.lock', displayName: 'Lock Posts', description: 'Lock posts to prevent new comments', category: 'posts' },
-    { name: 'posts.tag', displayName: 'Tag Posts', description: 'Add and manage tags on posts', category: 'posts' },
+  // Thread/Post permissions
+  THREAD: {
+    VIEW_THREADS: 'thread.view',
+    VIEW_CONTENT: 'thread.view_content',
+    CREATE_THREAD: 'thread.create',
+    REPLY_TO_THREAD: 'thread.reply',
+    EDIT_OWN_POSTS: 'thread.edit_own_posts',
+    DELETE_OWN_POSTS: 'thread.delete_own_posts',
+    EDIT_ANY_POST: 'thread.edit_any_post',
+    DELETE_ANY_POST: 'thread.delete_any_post',
+    VIEW_DELETED_POSTS: 'thread.view_deleted',
+    PERMANENTLY_DELETE: 'thread.permanently_delete',
+    MOVE_THREADS: 'thread.move',
+    COPY_THREADS: 'thread.copy',
+    MERGE_THREADS: 'thread.merge',
+    SPLIT_THREADS: 'thread.split',
+    STICK_THREADS: 'thread.stick',
+    FEATURE_THREADS: 'thread.feature',
+    LOCK_THREADS: 'thread.lock',
+    APPROVE_POSTS: 'thread.approve_posts',
+    RATE_POSTS: 'thread.rate_posts',
+    VIEW_POST_RATINGS: 'thread.view_post_ratings',
+  },
 
-    // Comment permissions
-    { name: 'comments.create', displayName: 'Create Comments', description: 'Create comments on posts', category: 'comments' },
-    { name: 'comments.edit.own', displayName: 'Edit Own Comments', description: 'Edit comments created by the user', category: 'comments' },
-    { name: 'comments.edit.all', displayName: 'Edit All Comments', description: 'Edit any comment in the forum', category: 'comments' },
-    { name: 'comments.delete.own', displayName: 'Delete Own Comments', description: 'Delete comments created by the user', category: 'comments' },
-    { name: 'comments.delete.all', displayName: 'Delete All Comments', description: 'Delete any comment in the forum', category: 'comments' },
+  // Media & Attachments
+  MEDIA: {
+    UPLOAD_ATTACHMENTS: 'media.upload_attachments',
+    VIEW_ATTACHMENTS: 'media.view_attachments',
+    DELETE_ANY_ATTACHMENT: 'media.delete_any_attachment',
+    EMBED_MEDIA: 'media.embed_media',
+    USE_BBCODE: 'media.use_bbcode',
+    USE_HTML: 'media.use_html',
+  },
 
-    // User permissions
-    { name: 'users.view.profiles', displayName: 'View User Profiles', description: 'View other user profiles', category: 'users' },
-    { name: 'users.edit.profile', displayName: 'Edit Own Profile', description: 'Edit own user profile', category: 'users' },
-    { name: 'users.manage.roles', displayName: 'Manage User Roles', description: 'Assign and remove roles from users', category: 'users' },
-    { name: 'users.ban', displayName: 'Ban Users', description: 'Ban and unban users from the forum', category: 'users' },
+  // Conversation permissions
+  CONVERSATION: {
+    START_CONVERSATIONS: 'conversation.start',
+    REPLY_TO_CONVERSATIONS: 'conversation.reply',
+    EDIT_OWN_MESSAGES: 'conversation.edit_own',
+    DELETE_OWN_MESSAGES: 'conversation.delete_own',
+    LEAVE_CONVERSATIONS: 'conversation.leave',
+    INVITE_TO_CONVERSATIONS: 'conversation.invite',
+    UPLOAD_ATTACHMENTS: 'conversation.upload_attachments',
+  },
 
-    // File permissions
-    { name: 'files.upload', displayName: 'Upload Files', description: 'Upload files to the forum', category: 'files' },
-    { name: 'files.delete.own', displayName: 'Delete Own Files', description: 'Delete files uploaded by the user', category: 'files' },
-    { name: 'files.delete.all', displayName: 'Delete All Files', description: 'Delete any file in the forum', category: 'files' },
+  // Moderation permissions
+  MODERATION: {
+    VIEW_MODERATION_LOG: 'moderation.view_log',
+    DELETE_POSTS: 'moderation.delete_posts',
+    EDIT_POSTS: 'moderation.edit_posts',
+    MOVE_POSTS: 'moderation.move_posts',
+    WARN_USERS: 'moderation.warn_users',
+    BAN_USERS: 'moderation.ban_users',
+    EDIT_USER_PROFILES: 'moderation.edit_user_profiles',
+    VIEW_USER_IPS: 'moderation.view_user_ips',
+    VIEW_WARNING_SYSTEM: 'moderation.view_warning_system',
+    MANAGE_REPORTED_CONTENT: 'moderation.manage_reports',
+    BYPASS_PERMISSIONS: 'moderation.bypass_permissions',
+  },
 
-    // Moderation permissions
-    { name: 'moderate.content', displayName: 'Moderate Content', description: 'Moderate posts and comments', category: 'moderation' },
-    { name: 'moderate.users', displayName: 'Moderate Users', description: 'Moderate user behavior and reports', category: 'moderation' },
-    { name: 'moderate.reports', displayName: 'Handle Reports', description: 'View and handle content reports', category: 'moderation' },
-    
-    // User permissions
-    { name: 'users.report', displayName: 'Report Content', description: 'Report inappropriate content', category: 'users' },
-    { name: 'users.watch', displayName: 'Watch Posts', description: 'Subscribe to posts for notifications', category: 'users' },
+  // Admin permissions
+  ADMIN: {
+    ACCESS_ADMIN_PANEL: 'admin.access_panel',
+    MANAGE_USERS: 'admin.manage_users',
+    MANAGE_ROLES: 'admin.manage_roles',
+    MANAGE_PERMISSIONS: 'admin.manage_permissions',
+    MANAGE_NODES: 'admin.manage_nodes',
+    MANAGE_STYLES: 'admin.manage_styles',
+    MANAGE_TROPHIES: 'admin.manage_trophies',
+    MANAGE_BB_CODES: 'admin.manage_bb_codes',
+    MANAGE_CUSTOM_FIELDS: 'admin.manage_custom_fields',
+    VIEW_STATISTICS: 'admin.view_statistics',
+    MANAGE_SETTINGS: 'admin.manage_settings',
+    IMPORT_EXPORT: 'admin.import_export',
+    RUN_QUERIES: 'admin.run_queries',
+    VIEW_ERROR_LOGS: 'admin.view_error_logs',
+  },
+
+  // Special permissions
+  SPECIAL: {
+    SUPER_ADMIN: 'special.super_admin',
+    FOUNDER: 'special.founder',
+    BYPASS_ALL_PERMISSIONS: 'special.bypass_all',
+  }
+} as const
+
+async function createPermissions() {
+  console.log('Creating permissions...')
+
+  const permissionCategories = [
+    { category: 'general', permissions: Object.values(ENHANCED_PERMISSIONS.GENERAL) },
+    { category: 'profile', permissions: Object.values(ENHANCED_PERMISSIONS.PROFILE) },
+    { category: 'thread', permissions: Object.values(ENHANCED_PERMISSIONS.THREAD) },
+    { category: 'media', permissions: Object.values(ENHANCED_PERMISSIONS.MEDIA) },
+    { category: 'conversation', permissions: Object.values(ENHANCED_PERMISSIONS.CONVERSATION) },
+    { category: 'moderation', permissions: Object.values(ENHANCED_PERMISSIONS.MODERATION) },
+    { category: 'admin', permissions: Object.values(ENHANCED_PERMISSIONS.ADMIN) },
+    { category: 'special', permissions: Object.values(ENHANCED_PERMISSIONS.SPECIAL) },
   ]
 
-  console.log('📝 Creating permissions...')
-  for (const permission of permissions) {
-    await prisma.permission.upsert({
-      where: { name: permission.name },
-      update: permission,
-      create: { ...permission, isSystem: true }
-    })
+  for (const { category, permissions } of permissionCategories) {
+    for (const permission of permissions) {
+      await prisma.permission.upsert({
+        where: { name: permission },
+        create: {
+          name: permission,
+          displayName: permission.split('.').pop()?.replace(/_/g, ' ').toUpperCase() || permission,
+          category,
+          isSystem: true
+        },
+        update: {}
+      })
+    }
   }
+}
 
-  // Create default roles
-  const roles = [
-    {
-      name: 'super_admin',
-      displayName: 'Super Admin',
-      description: 'Full access to all features and settings',
-      color: '#dc2626', // Red
-      isSystem: true,
-      permissions: [
-        'admin.access', 'admin.users.manage', 'admin.roles.manage', 'admin.categories.manage', 'admin.settings.manage', 'admin.analytics.view',
-        'posts.create', 'posts.edit.own', 'posts.edit.all', 'posts.delete.own', 'posts.delete.all', 'posts.pin', 'posts.feature', 'posts.lock', 'posts.tag',
-        'comments.create', 'comments.edit.own', 'comments.edit.all', 'comments.delete.own', 'comments.delete.all',
-        'users.view.profiles', 'users.edit.profile', 'users.manage.roles', 'users.ban',
-        'files.upload', 'files.delete.own', 'files.delete.all',
-        'moderate.content', 'moderate.users', 'moderate.reports'
-      ]
+async function createRoles() {
+  console.log('Creating roles...')
+
+  // Guest role (unregistered users)
+  const guestRole = await prisma.role.upsert({
+    where: { name: 'guest' },
+    create: {
+      name: 'guest',
+      displayName: 'Guest',
+      description: 'Unregistered users',
+      color: '#9CA3AF',
+      isSystem: true
     },
-    {
-      name: 'admin',
-      displayName: 'Admin',
-      description: 'Administrative access to most features',
-      color: '#ea580c', // Orange
-      isSystem: true,
-      permissions: [
-        'admin.access', 'admin.users.manage', 'admin.categories.manage', 'admin.analytics.view',
-        'posts.create', 'posts.edit.own', 'posts.edit.all', 'posts.delete.own', 'posts.delete.all', 'posts.pin', 'posts.feature', 'posts.lock', 'posts.tag',
-        'comments.create', 'comments.edit.own', 'comments.edit.all', 'comments.delete.own', 'comments.delete.all',
-        'users.view.profiles', 'users.edit.profile', 'users.manage.roles', 'users.ban',
-        'files.upload', 'files.delete.own', 'files.delete.all',
-        'moderate.content', 'moderate.users', 'moderate.reports'
-      ]
-    },
-    {
-      name: 'staff',
-      displayName: 'Staff',
-      description: 'Staff members with moderation powers',
-      color: '#2563eb', // Blue
-      isSystem: true,
-      permissions: [
-        'posts.create', 'posts.edit.own', 'posts.edit.all', 'posts.delete.own', 'posts.pin', 'posts.lock', 'posts.tag',
-        'comments.create', 'comments.edit.own', 'comments.edit.all', 'comments.delete.own', 'comments.delete.all',
-        'users.view.profiles', 'users.edit.profile', 'users.report', 'users.watch',
-        'files.upload', 'files.delete.own',
-        'moderate.content', 'moderate.users', 'moderate.reports'
-      ]
-    },
-    {
-      name: 'mod',
-      displayName: 'Moderator',
-      description: 'Community moderators with content moderation powers',
-      color: '#16a34a', // Green
-      isSystem: true,
-      permissions: [
-        'posts.create', 'posts.edit.own', 'posts.pin', 'posts.lock', 'posts.tag',
-        'comments.create', 'comments.edit.own', 'comments.delete.own',
-        'users.view.profiles', 'users.edit.profile', 'users.report', 'users.watch',
-        'files.upload', 'files.delete.own',
-        'moderate.content', 'moderate.reports'
-      ]
-    },
-    {
-      name: 'author',
-      displayName: 'Author',
-      description: 'Content creators with enhanced posting privileges',
-      color: '#9333ea', // Purple
-      isSystem: true,
-      permissions: [
-        'posts.create', 'posts.edit.own', 'posts.delete.own',
-        'comments.create', 'comments.edit.own', 'comments.delete.own',
-        'users.view.profiles', 'users.edit.profile',
-        'files.upload', 'files.delete.own'
-      ]
-    },
-    {
+    update: {}
+  })
+
+  // Member role (default registered users)
+  const memberRole = await prisma.role.upsert({
+    where: { name: 'member' },
+    create: {
       name: 'member',
       displayName: 'Member',
       description: 'Regular forum members',
-      color: '#6b7280', // Gray
-      isSystem: true,
-      permissions: [
-        'posts.create', 'posts.edit.own', 'posts.delete.own', 'posts.tag',
-        'comments.create', 'comments.edit.own', 'comments.delete.own',
-        'users.view.profiles', 'users.edit.profile', 'users.report', 'users.watch',
-        'files.upload', 'files.delete.own'
-      ]
-    }
-  ]
+      color: '#6B7280',
+      isSystem: true
+    },
+    update: {}
+  })
 
-  console.log('👥 Creating roles...')
-  for (const roleData of roles) {
-    const { permissions: rolePermissions, ...roleInfo } = roleData
-    
-    const role = await prisma.role.upsert({
-      where: { name: roleData.name },
-      update: roleInfo,
-      create: roleInfo
-    })
+  // Premium Member role
+  const premiumRole = await prisma.role.upsert({
+    where: { name: 'premium_member' },
+    create: {
+      name: 'premium_member',
+      displayName: 'Premium Member',
+      description: 'Premium members with additional features',
+      color: '#F59E0B',
+      isSystem: false
+    },
+    update: {}
+  })
 
-    // Assign permissions to role
-    for (const permissionName of rolePermissions) {
-      const permission = await prisma.permission.findUnique({
-        where: { name: permissionName }
-      })
+  // Moderator role
+  const moderatorRole = await prisma.role.upsert({
+    where: { name: 'moderator' },
+    create: {
+      name: 'moderator',
+      displayName: 'Moderator',
+      description: 'Forum moderators',
+      color: '#059669',
+      isSystem: true
+    },
+    update: {}
+  })
 
-      if (permission) {
-        await prisma.rolePermission.upsert({
-          where: {
-            roleId_permissionId: {
-              roleId: role.id,
-              permissionId: permission.id
-            }
-          },
-          update: {},
-          create: {
+  // Senior Moderator role
+  const seniorModRole = await prisma.role.upsert({
+    where: { name: 'senior_moderator' },
+    create: {
+      name: 'senior_moderator',
+      displayName: 'Senior Moderator',
+      description: 'Senior forum moderators with additional permissions',
+      color: '#047857',
+      isSystem: true
+    },
+    update: {}
+  })
+
+  // Administrator role
+  const adminRole = await prisma.role.upsert({
+    where: { name: 'administrator' },
+    create: {
+      name: 'administrator',
+      displayName: 'Administrator',
+      description: 'Forum administrators',
+      color: '#DC2626',
+      isSystem: true
+    },
+    update: {}
+  })
+
+  // Super Admin role
+  const superAdminRole = await prisma.role.upsert({
+    where: { name: 'super_admin' },
+    create: {
+      name: 'super_admin',
+      displayName: 'Super Administrator',
+      description: 'Super administrators with full access',
+      color: '#7C2D12',
+      isSystem: true
+    },
+    update: {}
+  })
+
+  return { guestRole, memberRole, premiumRole, moderatorRole, seniorModRole, adminRole, superAdminRole }
+}
+
+async function assignPermissionsToRoles() {
+  console.log('Assigning permissions to roles...')
+
+  // Get all permissions
+  const permissions = await prisma.permission.findMany()
+  const roles = await prisma.role.findMany()
+
+  // Helper function to assign permissions to role
+  async function assignPermissions(roleName: string, permissionNames: string[]) {
+    const role = roles.find(r => r.name === roleName)
+    if (!role) return
+
+    for (const permName of permissionNames) {
+      const permission = permissions.find(p => p.name === permName)
+      if (!permission) continue
+
+      await prisma.rolePermission.upsert({
+        where: {
+          roleId_permissionId: {
             roleId: role.id,
             permissionId: permission.id
           }
-        })
-      }
+        },
+        create: {
+          roleId: role.id,
+          permissionId: permission.id
+        },
+        update: {}
+      })
     }
   }
 
-  // Update existing users to have the member role
-  console.log('🔄 Updating existing users...')
-  const memberRole = await prisma.role.findUnique({
-    where: { name: 'member' }
-  })
+  // Guest permissions
+  await assignPermissions('guest', [
+    ENHANCED_PERMISSIONS.GENERAL.VIEW_FORUM,
+    ENHANCED_PERMISSIONS.GENERAL.SEARCH,
+    ENHANCED_PERMISSIONS.GENERAL.VIEW_PROFILES,
+    ENHANCED_PERMISSIONS.THREAD.VIEW_THREADS,
+    ENHANCED_PERMISSIONS.THREAD.VIEW_CONTENT,
+    ENHANCED_PERMISSIONS.MEDIA.VIEW_ATTACHMENTS,
+  ])
 
-  if (memberRole) {
-    await prisma.user.updateMany({
-      where: { roleId: null },
-      data: { roleId: memberRole.id }
-    })
-  }
+  // Member permissions (includes guest + additional)
+  await assignPermissions('member', [
+    ...Object.values(ENHANCED_PERMISSIONS.GENERAL),
+    ...Object.values(ENHANCED_PERMISSIONS.PROFILE),
+    ENHANCED_PERMISSIONS.THREAD.VIEW_THREADS,
+    ENHANCED_PERMISSIONS.THREAD.VIEW_CONTENT,
+    ENHANCED_PERMISSIONS.THREAD.CREATE_THREAD,
+    ENHANCED_PERMISSIONS.THREAD.REPLY_TO_THREAD,
+    ENHANCED_PERMISSIONS.THREAD.EDIT_OWN_POSTS,
+    ENHANCED_PERMISSIONS.THREAD.DELETE_OWN_POSTS,
+    ENHANCED_PERMISSIONS.THREAD.RATE_POSTS,
+    ENHANCED_PERMISSIONS.THREAD.VIEW_POST_RATINGS,
+    ENHANCED_PERMISSIONS.MEDIA.UPLOAD_ATTACHMENTS,
+    ENHANCED_PERMISSIONS.MEDIA.VIEW_ATTACHMENTS,
+    ENHANCED_PERMISSIONS.MEDIA.EMBED_MEDIA,
+    ENHANCED_PERMISSIONS.MEDIA.USE_BBCODE,
+    ...Object.values(ENHANCED_PERMISSIONS.CONVERSATION),
+  ])
 
-  console.log('✅ Database seeding completed!')
+  // Premium Member permissions (includes member + additional)
+  await assignPermissions('premium_member', [
+    ENHANCED_PERMISSIONS.MEDIA.USE_HTML,
+    ENHANCED_PERMISSIONS.GENERAL.BYPASS_FLOOD_CHECK,
+  ])
+
+  // Moderator permissions
+  await assignPermissions('moderator', [
+    ...Object.values(ENHANCED_PERMISSIONS.GENERAL),
+    ...Object.values(ENHANCED_PERMISSIONS.PROFILE),
+    ...Object.values(ENHANCED_PERMISSIONS.THREAD),
+    ...Object.values(ENHANCED_PERMISSIONS.MEDIA),
+    ...Object.values(ENHANCED_PERMISSIONS.CONVERSATION),
+    ENHANCED_PERMISSIONS.MODERATION.VIEW_MODERATION_LOG,
+    ENHANCED_PERMISSIONS.MODERATION.DELETE_POSTS,
+    ENHANCED_PERMISSIONS.MODERATION.EDIT_POSTS,
+    ENHANCED_PERMISSIONS.MODERATION.MOVE_POSTS,
+    ENHANCED_PERMISSIONS.MODERATION.WARN_USERS,
+    ENHANCED_PERMISSIONS.MODERATION.VIEW_WARNING_SYSTEM,
+    ENHANCED_PERMISSIONS.MODERATION.MANAGE_REPORTED_CONTENT,
+  ])
+
+  // Senior Moderator permissions
+  await assignPermissions('senior_moderator', [
+    ENHANCED_PERMISSIONS.MODERATION.BAN_USERS,
+    ENHANCED_PERMISSIONS.MODERATION.EDIT_USER_PROFILES,
+    ENHANCED_PERMISSIONS.MODERATION.VIEW_USER_IPS,
+    ENHANCED_PERMISSIONS.MODERATION.BYPASS_PERMISSIONS,
+  ])
+
+  // Administrator permissions
+  await assignPermissions('administrator', [
+    ...Object.values(ENHANCED_PERMISSIONS.GENERAL),
+    ...Object.values(ENHANCED_PERMISSIONS.PROFILE),
+    ...Object.values(ENHANCED_PERMISSIONS.THREAD),
+    ...Object.values(ENHANCED_PERMISSIONS.MEDIA),
+    ...Object.values(ENHANCED_PERMISSIONS.CONVERSATION),
+    ...Object.values(ENHANCED_PERMISSIONS.MODERATION),
+    ...Object.values(ENHANCED_PERMISSIONS.ADMIN),
+  ])
+
+  // Super Admin permissions (all permissions)
+  await assignPermissions('super_admin', [
+    ...Object.values(ENHANCED_PERMISSIONS.GENERAL),
+    ...Object.values(ENHANCED_PERMISSIONS.PROFILE),
+    ...Object.values(ENHANCED_PERMISSIONS.THREAD),
+    ...Object.values(ENHANCED_PERMISSIONS.MEDIA),
+    ...Object.values(ENHANCED_PERMISSIONS.CONVERSATION),
+    ...Object.values(ENHANCED_PERMISSIONS.MODERATION),
+    ...Object.values(ENHANCED_PERMISSIONS.ADMIN),
+    ...Object.values(ENHANCED_PERMISSIONS.SPECIAL),
+  ])
 }
 
-main()
-  .catch((e) => {
-    console.error('❌ Error seeding database:', e)
-    process.exit(1)
+async function createDefaultTrophies() {
+  console.log('Creating default trophies...')
+
+  const defaultTrophies = [
+    {
+      name: 'Welcome!',
+      description: 'Welcome to the community! Thanks for joining us.',
+      criteria: JSON.stringify({ type: 'user_registered' }),
+      icon: 'celebration',
+      points: 10,
+      category: 'welcome',
+      rarity: 'common'
+    },
+    {
+      name: 'First Post',
+      description: 'Made your first post on the forum.',
+      criteria: JSON.stringify({ type: 'post_count', count: 1 }),
+      icon: 'edit',
+      points: 5,
+      category: 'posting',
+      rarity: 'common'
+    },
+    {
+      name: 'Active Member',
+      description: 'Posted 100 times on the forum.',
+      criteria: JSON.stringify({ type: 'post_count', count: 100 }),
+      icon: 'star',
+      points: 50,
+      category: 'posting',
+      rarity: 'uncommon'
+    },
+    {
+      name: 'Prolific Poster',
+      description: 'Posted 1000 times on the forum.',
+      criteria: JSON.stringify({ type: 'post_count', count: 1000 }),
+      icon: 'trophy',
+      points: 100,
+      category: 'posting',
+      rarity: 'rare'
+    },
+    {
+      name: 'Well Liked',
+      description: 'Received 100 likes on your posts.',
+      criteria: JSON.stringify({ type: 'like_count', count: 100 }),
+      icon: 'heart',
+      points: 75,
+      category: 'engagement',
+      rarity: 'uncommon'
+    },
+    {
+      name: 'Popular',
+      description: 'Received 500 likes on your posts.',
+      criteria: JSON.stringify({ type: 'like_count', count: 500 }),
+      icon: 'thumbs-up',
+      points: 150,
+      category: 'engagement',
+      rarity: 'rare'
+    },
+    {
+      name: 'Anniversary',
+      description: 'Been a member for one year.',
+      criteria: JSON.stringify({ type: 'member_duration', days: 365 }),
+      icon: 'calendar',
+      points: 100,
+      category: 'milestone',
+      rarity: 'rare'
+    },
+    {
+      name: 'Veteran',
+      description: 'Been a member for five years.',
+      criteria: JSON.stringify({ type: 'member_duration', days: 1825 }),
+      icon: 'shield',
+      points: 250,
+      category: 'milestone',
+      rarity: 'epic'
+    },
+    {
+      name: 'Legend',
+      description: 'Posted 10,000 times and received 5,000 likes.',
+      criteria: JSON.stringify({ 
+        type: 'combined', 
+        requirements: [
+          { type: 'post_count', count: 10000 },
+          { type: 'like_count', count: 5000 }
+        ]
+      }),
+      icon: 'crown',
+      points: 500,
+      category: 'achievement',
+      rarity: 'legendary'
+    }
+  ]
+
+  for (const trophy of defaultTrophies) {
+    await prisma.trophy.create({
+      data: trophy
+    })
+  }
+}
+
+async function createDefaultNodes() {
+  console.log('Creating default nodes...')
+
+  // Main Categories
+  const general = await prisma.node.create({
+    data: {
+      name: 'General Discussion',
+      description: 'General discussions about anything and everything',
+      nodeType: 'category',
+      displayOrder: 1,
+      icon: 'message-circle',
+      color: '#3B82F6',
+      isActive: true
+    }
   })
-  .finally(async () => {
+
+  const tech = await prisma.node.create({
+    data: {
+      name: 'Technology',
+      description: 'Discussions about technology, programming, and development',
+      nodeType: 'category',
+      displayOrder: 2,
+      icon: 'cpu',
+      color: '#10B981',
+      isActive: true
+    }
+  })
+
+  const gaming = await prisma.node.create({
+    data: {
+      name: 'Gaming',
+      description: 'Gaming discussions, reviews, and news',
+      nodeType: 'category',
+      displayOrder: 3,
+      icon: 'gamepad',
+      color: '#8B5CF6',
+      isActive: true
+    }
+  })
+
+  // Subcategories
+  await prisma.node.create({
+    data: {
+      name: 'Web Development',
+      description: 'Frontend, backend, and full-stack web development',
+      nodeType: 'category',
+      displayOrder: 1,
+      parentId: tech.id,
+      icon: 'code',
+      color: '#F59E0B',
+      isActive: true
+    }
+  })
+
+  await prisma.node.create({
+    data: {
+      name: 'Mobile Development',
+      description: 'iOS, Android, and cross-platform mobile development',
+      nodeType: 'category',
+      displayOrder: 2,
+      parentId: tech.id,
+      icon: 'smartphone',
+      color: '#EF4444',
+      isActive: true
+    }
+  })
+
+  await prisma.node.create({
+    data: {
+      name: 'PC Gaming',
+      description: 'PC gaming discussions and hardware',
+      nodeType: 'category',
+      displayOrder: 1,
+      parentId: gaming.id,
+      icon: 'monitor',
+      color: '#6366F1',
+      isActive: true
+    }
+  })
+
+  await prisma.node.create({
+    data: {
+      name: 'Console Gaming',
+      description: 'PlayStation, Xbox, Nintendo discussions',
+      nodeType: 'category',
+      displayOrder: 2,
+      parentId: gaming.id,
+      icon: 'gamepad-2',
+      color: '#EC4899',
+      isActive: true
+    }
+  })
+}
+
+async function createDefaultBBCodes() {
+  console.log('Creating default BB codes...')
+
+  const defaultBBCodes = [
+    {
+      tag: 'b',
+      replacement: '<strong>$1</strong>',
+      example: '[b]Bold text[/b]',
+      description: 'Make text bold',
+      hasOption: false,
+      parseContent: true
+    },
+    {
+      tag: 'i',
+      replacement: '<em>$1</em>',
+      example: '[i]Italic text[/i]',
+      description: 'Make text italic',
+      hasOption: false,
+      parseContent: true
+    },
+    {
+      tag: 'u',
+      replacement: '<u>$1</u>',
+      example: '[u]Underlined text[/u]',
+      description: 'Underline text',
+      hasOption: false,
+      parseContent: true
+    },
+    {
+      tag: 's',
+      replacement: '<s>$1</s>',
+      example: '[s]Strikethrough text[/s]',
+      description: 'Strikethrough text',
+      hasOption: false,
+      parseContent: true
+    },
+    {
+      tag: 'url',
+      replacement: '<a href="$option" target="_blank" rel="noopener noreferrer">$1</a>',
+      example: '[url=https://example.com]Link text[/url]',
+      description: 'Create a hyperlink',
+      hasOption: true,
+      parseContent: false
+    },
+    {
+      tag: 'img',
+      replacement: '<img src="$1" alt="Image" style="max-width: 100%; height: auto;" />',
+      example: '[img]https://example.com/image.jpg[/img]',
+      description: 'Embed an image',
+      hasOption: false,
+      parseContent: false
+    },
+    {
+      tag: 'code',
+      replacement: '<code class="inline-code">$1</code>',
+      example: '[code]console.log("Hello World");[/code]',
+      description: 'Inline code',
+      hasOption: false,
+      parseContent: false
+    },
+    {
+      tag: 'quote',
+      replacement: '<blockquote class="forum-quote">$1</blockquote>',
+      example: '[quote]Quoted text[/quote]',
+      description: 'Quote text',
+      hasOption: false,
+      parseContent: true
+    },
+    {
+      tag: 'color',
+      replacement: '<span style="color: $option;">$1</span>',
+      example: '[color=red]Red text[/color]',
+      description: 'Change text color',
+      hasOption: true,
+      parseContent: true
+    },
+    {
+      tag: 'size',
+      replacement: '<span style="font-size: $option;">$1</span>',
+      example: '[size=20px]Large text[/size]',
+      description: 'Change text size',
+      hasOption: true,
+      parseContent: true
+    },
+    {
+      tag: 'center',
+      replacement: '<div style="text-align: center;">$1</div>',
+      example: '[center]Centered text[/center]',
+      description: 'Center align text',
+      hasOption: false,
+      parseContent: true
+    },
+    {
+      tag: 'spoiler',
+      replacement: '<details class="spoiler"><summary>Spoiler</summary>$1</details>',
+      example: '[spoiler]Hidden content[/spoiler]',
+      description: 'Hide content behind spoiler tag',
+      hasOption: false,
+      parseContent: true
+    }
+  ]
+
+  for (const bbcode of defaultBBCodes) {
+    await prisma.bBCode.upsert({
+      where: { tag: bbcode.tag },
+      create: bbcode,
+      update: {}
+    })
+  }
+}
+
+async function main() {
+  try {
+    console.log('🌱 Starting enhanced forum seeding...')
+
+    await createPermissions()
+    await createRoles()
+    await assignPermissionsToRoles()
+    await createDefaultTrophies()
+    await createDefaultNodes()
+    await createDefaultBBCodes()
+
+    console.log('✅ Enhanced forum seeding completed successfully!')
+  } catch (error) {
+    console.error('❌ Error during seeding:', error)
+    throw error
+  } finally {
     await prisma.$disconnect()
-  })
+  }
+}
+
+main().catch((error) => {
+  console.error(error)
+  process.exit(1)
+})

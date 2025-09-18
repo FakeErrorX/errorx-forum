@@ -1,9 +1,11 @@
-'use client'
+"use client"
 
-import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useState, useEffect } from 'react'
+import { AdminLayout } from '@/components/admin/admin-layout'
+import { AdminDashboard } from '@/components/admin/admin-dashboard'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -49,7 +51,7 @@ interface Stats {
   }>
 }
 
-export default function AdminDashboard() {
+export default function AdminPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [stats, setStats] = useState<Stats | null>(null)
@@ -135,19 +137,19 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="container mx-auto p-6">
+      <AdminLayout>
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
             <p className="mt-2 text-gray-600">Loading dashboard...</p>
           </div>
         </div>
-      </div>
+      </AdminLayout>
     )
   }
 
   return (
-    <div className="container mx-auto p-6">
+    <AdminLayout>
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Admin Dashboard</h1>
         <p className="text-gray-600">Welcome back, {session?.user?.name || 'Admin'}!</p>
@@ -408,6 +410,6 @@ export default function AdminDashboard() {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+    </AdminLayout>
   )
 }

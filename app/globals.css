@@ -135,3 +135,74 @@
       linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
   }
 }
+
+/* BBCode Content Styling */
+.bbcode-content {
+  @apply space-y-4;
+}
+
+.bbcode-content img.bbcode-img {
+  @apply max-w-full h-auto rounded-lg shadow-sm;
+}
+
+.bbcode-content .bbcode-youtube {
+  @apply relative aspect-video max-w-2xl mx-auto overflow-hidden rounded-lg shadow-sm;
+}
+
+.bbcode-content .bbcode-youtube iframe {
+  @apply absolute inset-0 w-full h-full;
+}
+
+.bbcode-content blockquote.bbcode-quote {
+  @apply border-l-4 border-muted-foreground/30 pl-4 py-2 my-4 italic bg-muted/30 rounded-r-lg;
+}
+
+.bbcode-content blockquote.bbcode-quote cite {
+  @apply text-sm text-muted-foreground font-semibold not-italic block mb-2;
+}
+
+.bbcode-content details.bbcode-spoiler {
+  @apply border border-muted rounded-lg my-4;
+}
+
+.bbcode-content details.bbcode-spoiler summary {
+  @apply cursor-pointer p-3 font-medium hover:bg-muted/50 rounded-t-lg select-none;
+}
+
+.bbcode-content details.bbcode-spoiler[open] summary {
+  @apply border-b border-muted;
+}
+
+.bbcode-content details.bbcode-spoiler > :not(summary) {
+  @apply p-3;
+}
+
+.bbcode-content ul.bbcode-list,
+.bbcode-content ol.bbcode-list {
+  @apply space-y-1 pl-6;
+}
+
+.bbcode-content table.bbcode-table {
+  @apply w-full border-collapse border border-muted rounded-lg overflow-hidden;
+}
+
+.bbcode-content table.bbcode-table th,
+.bbcode-content table.bbcode-table td {
+  @apply border border-muted p-2 text-left;
+}
+
+.bbcode-content table.bbcode-table th {
+  @apply bg-muted font-semibold;
+}
+
+.bbcode-content pre {
+  @apply bg-muted p-4 rounded-lg overflow-x-auto;
+}
+
+.bbcode-content pre code {
+  @apply text-sm font-mono;
+}
+
+.bbcode-content code:not(pre code) {
+  @apply bg-muted px-1.5 py-0.5 rounded text-sm font-mono;
+}

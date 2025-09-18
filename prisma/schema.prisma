@@ -59,9 +59,40 @@ model User {
   isActive      Boolean   @default(true)
   preferences   Json?     @default("{\"theme\": \"system\", \"notifications\": true, \"emailUpdates\": true}")
 
+  // Advanced User Management
+  title         String?   // Custom user title
+  location      String?
+  occupation    String?
+  website       String?
+  birthday      DateTime?
+  timezone      String?
+  signature     String?   @db.Text
+  aboutMe       String?   @db.Text
+  
+  // User Status & Restrictions
+  isBanned      Boolean   @default(false)
+  bannedUntil   DateTime?
+  bannedReason  String?
+  bannedById    String?
+  banCount      Int       @default(0)
+  warningPoints Int       @default(0)
+  isEmailBouncing Boolean @default(false)
+  
+  // Activity & Engagement
+  lastActivity  DateTime  @default(now())
+  messageCount  Int       @default(0)
+  likeCount     Int       @default(0)
+  trophyPoints  Int       @default(0)
+  profileViews  Int       @default(0)
+  
+  // Privacy & Security
+  privacySettings Json?   @default("{\"showOnline\": true, \"receiveMessages\": true, \"showEmail\": false}")
+  emailNotifications Json? @default("{\"replies\": true, \"mentions\": true, \"conversations\": true}")
+  
   // Role and permissions
   roleId        String?   @default("member") // Default role
   role          Role?     @relation(fields: [roleId], references: [id])
+  secondaryRoles UserSecondaryRole[]
 
   // Relations
   accounts      Account[]
@@ -92,9 +123,39 @@ model User {
   drafts        Draft[]
   sentMessages  ConversationMessage[] @relation("UserSentMessages")
 
+  // Advanced User Management Relations
+  bannedBy      User?          @relation("UserBannedBy", fields: [bannedById], references: [id])
+  bannedUsers   User[]         @relation("UserBannedBy")
+  userSessions  UserSession[]
+  userIpLogs    UserIpLog[]
+  warnings      Warning[]      @relation("UserWarnings")
+  givenWarnings Warning[]      @relation("WarningGivenBy")
+  userTrophies  UserTrophy[]
+  profilePosts  ProfilePost[]  @relation("ProfilePostTarget")
+  sentProfilePosts ProfilePost[] @relation("ProfilePostAuthor")
+  profilePostComments ProfilePostComment[] @relation("ProfilePostCommentAuthor")
+  customFields  UserCustomField[]
+  userUpgrades  UserUpgrade[]
+  
+  // Enhanced forum relations
+  authoredPosts EnhancedPost[] @relation("PostAuthor")
+  deletedPosts  EnhancedPost[] @relation("PostDeletedBy")
+  authoredReplies PostReply[]  @relation("ReplyAuthor")
+  deletedReplies PostReply[]   @relation("ReplyDeletedBy")
+  postRatings   PostRating[]
+  postViews     PostView[]
+  newsArticles  NewsFeed[]     @relation("NewsAuthor")
+  
+  // Node permissions
+  nodePermissions NodePermission[]
+  moderatedNodes NodeModerator[] @relation("UserNodeModerator")
+
   // Indexes for case-insensitive queries
   @@index([username], map: "username_ci_index")
   @@index([roleId])
+  @@index([isBanned])
+  @@index([lastActivity])
+  @@index([warningPoints])
 }
 
 model VerificationToken {
@@ -105,7 +166,7 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-// Forum models
+// Legacy Category model (keeping for backward compatibility)
 model Category {
   id          String   @id @default(cuid())
   categoryId  Int      @unique @default(autoincrement()) // Custom sequential category ID
@@ -157,6 +218,7 @@ model Post {
   poll            Poll?
   prefixId        String?
   prefix          ThreadPrefix? @relation(fields: [prefixId], references: [id])
+  attachments     PostSimpleAttachment[]
 
   @@index([isFeatured, featuredAt])
 }
@@ -309,7 +371,9 @@ model ThreadPrefix {
   createdAt  DateTime @default(now())
 
   category   Category? @relation(fields: [categoryId], references: [id])
+  nodes      Node[]    @relation("NodePrefixes")
   posts      Post[]
+  enhancedPosts EnhancedPost[]
 
   @@index([categoryId])
 }
@@ -462,6 +526,7 @@ model Draft {
 
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   category   Category? @relation(fields: [categoryId], references: [id])
+  node       Node?     @relation("NodeDrafts", fields: [categoryId], references: [id], map: "Draft_nodeId_fkey")
 
   @@index([userId])
 }
@@ -481,6 +546,10 @@ model Role {
   // Relations
   users       User[]
   permissions RolePermission[]
+  secondaryUsers UserSecondaryRole[]
+  nodePermissions NodePermission[]
+  upgradesFrom RoleUpgrade[] @relation("RoleUpgradeFrom")
+  upgradesTo   RoleUpgrade[] @relation("RoleUpgradeTo")
 
   @@index([name])
   @@index([isSystem])
@@ -515,4 +584,534 @@ model RolePermission {
   @@unique([roleId, permissionId])
   @@index([roleId])
   @@index([permissionId])
+}
+
+// Advanced User Management Models
+
+// Secondary roles for users (multiple roles support)
+model UserSecondaryRole {
+  id        String   @id @default(cuid())
+  userId    String
+  roleId    String
+  grantedBy String?
+  grantedAt DateTime @default(now())
+  expiresAt DateTime?
+
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+}
+
+// User session tracking
+model UserSession {
+  id          String   @id @default(cuid())
+  userId      String
+  sessionId   String   @unique
+  ipAddress   String
+  userAgent   String?  @db.Text
+  country     String?
+  city        String?
+  isActive    Boolean  @default(true)
+  lastActivity DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([ipAddress])
+  @@index([isActive])
+}
+
+// IP address logging for users
+model UserIpLog {
+  id        String   @id @default(cuid())
+  userId    String
+  ipAddress String
+  country   String?
+  city      String?
+  action    String   // 'login', 'register', 'post', 'view'
+  timestamp DateTime @default(now())
+
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([ipAddress])
+  @@index([timestamp])
+}
+
+// Warning system
+model Warning {
+  id          String   @id @default(cuid())
+  warningId   Int      @unique @default(autoincrement())
+  userId      String
+  givenById   String
+  title       String
+  reason      String   @db.Text
+  points      Int      @default(1)
+  isActive    Boolean  @default(true)
+  expiresAt   DateTime?
+  createdAt   DateTime @default(now())
+
+  user        User @relation("UserWarnings", fields: [userId], references: [id], onDelete: Cascade)
+  givenBy     User @relation("WarningGivenBy", fields: [givenById], references: [id])
+
+  @@index([userId])
+  @@index([isActive])
+  @@index([expiresAt])
+}
+
+// Trophy System
+model Trophy {
+  id          String   @id @default(cuid())
+  trophyId    Int      @unique @default(autoincrement())
+  name        String
+  description String?  @db.Text
+  criteria    String   @db.Text  // JSON criteria for earning
+  icon        String?
+  points      Int      @default(0)
+  isActive    Boolean  @default(true)
+  category    String?
+  rarity      String   @default("common") // common, uncommon, rare, epic, legendary
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userTrophies UserTrophy[]
+
+  @@index([isActive])
+  @@index([category])
+  @@index([rarity])
+}
+
+model UserTrophy {
+  id        String   @id @default(cuid())
+  userId    String
+  trophyId  String
+  earnedAt  DateTime @default(now())
+  
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trophy    Trophy @relation(fields: [trophyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, trophyId])
+  @@index([userId])
+  @@index([earnedAt])
+}
+
+// Profile Posts (like visitor messages)
+model ProfilePost {
+  id        String   @id @default(cuid())
+  profilePostId Int   @unique @default(autoincrement())
+  targetUserId String
+  authorId  String
+  content   String   @db.Text
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  targetUser User @relation("ProfilePostTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
+  author     User @relation("ProfilePostAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  comments   ProfilePostComment[]
+
+  @@index([targetUserId])
+  @@index([authorId])
+  @@index([createdAt])
+}
+
+model ProfilePostComment {
+  id            String   @id @default(cuid())
+  profilePostId String
+  authorId      String
+  content       String   @db.Text
+  isDeleted     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  profilePost   ProfilePost @relation(fields: [profilePostId], references: [id], onDelete: Cascade)
+  author        User        @relation("ProfilePostCommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([profilePostId])
+  @@index([authorId])
+}
+
+// Custom user fields
+model CustomField {
+  id          String   @id @default(cuid())
+  fieldId     Int      @unique @default(autoincrement())
+  name        String
+  displayName String
+  description String?
+  fieldType   String   // text, textarea, select, checkbox, radio, date
+  options     Json?    // For select/radio fields
+  isRequired  Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  position    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userFields  UserCustomField[]
+
+  @@index([isActive])
+  @@index([position])
+}
+
+model UserCustomField {
+  id      String @id @default(cuid())
+  userId  String
+  fieldId String
+  value   String @db.Text
+
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  field   CustomField @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, fieldId])
+  @@index([userId])
+}
+
+// User upgrades/premium features
+model UserUpgrade {
+  id          String   @id @default(cuid())
+  userId      String
+  upgradeType String   // premium, vip, etc.
+  startDate   DateTime @default(now())
+  endDate     DateTime?
+  isActive    Boolean  @default(true)
+  features    Json?    // JSON of enabled features
+  createdAt   DateTime @default(now())
+
+  user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isActive])
+  @@index([endDate])
+}
+
+// Enhanced Forum Models
+
+// Enhanced Category model (now called Node for flexibility)
+model Node {
+  id              String   @id @default(cuid())
+  nodeId          Int      @unique @default(autoincrement())
+  name            String
+  description     String?  @db.Text
+  nodeType        String   @default("category") // category, page, link
+  displayOrder    Int      @default(0)
+  parentId        String?
+  
+  // Appearance
+  icon            String?
+  color           String?
+  style           Json?    // Additional styling options
+  
+  // Permissions & Settings
+  isActive        Boolean  @default(true)
+  isPrivate       Boolean  @default(false)
+  requirePrefix   Boolean  @default(false)
+  allowPolls      Boolean  @default(true)
+  allowUploads    Boolean  @default(true)
+  allowBBCode     Boolean  @default(true)
+  
+  // Statistics
+  postCount       Int      @default(0)
+  threadCount     Int      @default(0)
+  lastPostAt      DateTime?
+  lastPostId      String?
+  lastPostTitle   String?
+  lastPostAuthor  String?
+  
+  // SEO & External
+  pageTitle       String?
+  metaDescription String?
+  externalUrl     String?  // For link nodes
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  parent          Node?    @relation("NodeHierarchy", fields: [parentId], references: [id])
+  children        Node[]   @relation("NodeHierarchy")
+  enhancedPosts   EnhancedPost[] @relation("NodeEnhancedPosts")
+  prefixes        ThreadPrefix[] @relation("NodePrefixes")
+  drafts          Draft[]  @relation("NodeDrafts")
+  permissions     NodePermission[]
+  moderators      NodeModerator[]
+
+  @@index([nodeType])
+  @@index([displayOrder])
+  @@index([parentId])
+  @@index([isActive])
+}
+
+// Node-specific permissions
+model NodePermission {
+  id           String @id @default(cuid())
+  nodeId       String
+  userId       String?
+  roleId       String?
+  permission   String  // view, post, reply, upload, poll, moderate, etc.
+  value        String  @default("allow") // allow, deny, inherit
+  
+  node         Node @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  user         User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role         Role? @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([nodeId, userId, permission])
+  @@unique([nodeId, roleId, permission])
+  @@index([nodeId])
+  @@index([userId])
+  @@index([roleId])
+}
+
+// Node moderators
+model NodeModerator {
+  id       String @id @default(cuid())
+  nodeId   String
+  userId   String
+  grantedAt DateTime @default(now())
+  
+  node     Node @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  user     User @relation("UserNodeModerator", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([nodeId, userId])
+  @@index([nodeId])
+  @@index([userId])
+}
+
+// Enhanced Post model
+model EnhancedPost {
+  id              String   @id @default(cuid())
+  postId          Int      @unique @default(autoincrement())
+  title           String
+  content         String   @db.Text
+  contentParsed   String?  @db.Text  // Parsed BB code/markdown
+  nodeId          String
+  authorId        String
+  authorUsername  String
+  
+  // Thread properties
+  threadType      String   @default("discussion") // discussion, question, article, poll
+  isPinned        Boolean  @default(false)
+  isSticky        Boolean  @default(false) // Global sticky
+  isFeatured      Boolean  @default(false)
+  isLocked        Boolean  @default(false)
+  isDeleted       Boolean  @default(false)
+  deletedReason   String?
+  deletedById     String?
+  
+  // Engagement
+  views           Int      @default(0)
+  uniqueViews     Int      @default(0)
+  rating          Float?   // Average rating if enabled
+  ratingCount     Int      @default(0)
+  
+  // Timestamps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  lastReplyAt     DateTime?
+  bumpedAt        DateTime?
+  
+  // Relations
+  node            Node     @relation("NodeEnhancedPosts", fields: [nodeId], references: [id], onDelete: Cascade)
+  author          User     @relation("PostAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  deletedBy       User?    @relation("PostDeletedBy", fields: [deletedById], references: [id])
+  
+  replies         PostReply[]
+  attachments     PostAttachment[]
+  ratings         PostRating[]
+  views_log       PostView[]
+  prefixId        String?
+  prefix          ThreadPrefix? @relation(fields: [prefixId], references: [id])
+
+  @@index([nodeId])
+  @@index([authorId])
+  @@index([threadType])
+  @@index([isPinned, isSticky])
+  @@index([lastReplyAt])
+  @@index([rating])
+}
+
+// Post replies (enhanced comments)
+model PostReply {
+  id              String   @id @default(cuid())
+  replyId         Int      @unique @default(autoincrement())
+  postId          String
+  authorId        String
+  authorUsername  String
+  content         String   @db.Text
+  contentParsed   String?  @db.Text
+  
+  // Threading
+  parentId        String?
+  position        Int      @default(0)
+  
+  // Status
+  isDeleted       Boolean  @default(false)
+  deletedReason   String?
+  deletedById     String?
+  
+  // Engagement
+  rating          Float?
+  ratingCount     Int      @default(0)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  post            EnhancedPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author          User         @relation("ReplyAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  deletedBy       User?        @relation("ReplyDeletedBy", fields: [deletedById], references: [id])
+  parent          PostReply?   @relation("ReplyThread", fields: [parentId], references: [id])
+  children        PostReply[]  @relation("ReplyThread")
+  
+  attachments     PostAttachment[]
+  ratings         PostRating[]
+
+  @@index([postId])
+  @@index([authorId])
+  @@index([parentId])
+  @@index([position])
+}
+
+// Post/Reply ratings
+model PostRating {
+  id       String @id @default(cuid())
+  userId   String
+  postId   String?
+  replyId  String?
+  rating   Int    // 1-5 stars or thumbs up/down
+  createdAt DateTime @default(now())
+
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post     EnhancedPost? @relation(fields: [postId], references: [id], onDelete: Cascade)
+  reply    PostReply?    @relation(fields: [replyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@unique([userId, replyId])
+  @@index([postId])
+  @@index([replyId])
+}
+
+// Post attachments
+model PostAttachment {
+  id           String @id @default(cuid())
+  attachmentId Int    @unique @default(autoincrement())
+  postId       String?
+  replyId      String?
+  filename     String
+  originalName String
+  mimeType     String
+  fileSize     Int
+  downloadCount Int   @default(0)
+  uploadedAt   DateTime @default(now())
+
+  post         EnhancedPost? @relation(fields: [postId], references: [id], onDelete: Cascade)
+  reply        PostReply?    @relation(fields: [replyId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+  @@index([replyId])
+  @@index([uploadedAt])
+}
+
+// Simple attachments for regular posts
+model PostSimpleAttachment {
+  id           String @id @default(cuid())
+  attachmentId Int    @unique @default(autoincrement())
+  postId       String
+  filename     String
+  originalName String
+  mimeType     String
+  fileSize     Int
+  downloadCount Int   @default(0)
+  uploadedAt   DateTime @default(now())
+
+  post         Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+  @@index([uploadedAt])
+}
+
+// Post view tracking
+model PostView {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String?
+  ipAddress String
+  viewedAt  DateTime @default(now())
+
+  post      EnhancedPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@unique([postId, ipAddress])
+  @@index([postId])
+  @@index([viewedAt])
+}
+
+// BB Code system
+model BBCode {
+  id          String   @id @default(cuid())
+  tag         String   @unique
+  replacement String   @db.Text
+  example     String?
+  description String?
+  isActive    Boolean  @default(true)
+  hasOption   Boolean  @default(false)
+  parseContent Boolean @default(true)
+  createdAt   DateTime @default(now())
+
+  @@index([isActive])
+}
+
+// Post templates
+model PostTemplate {
+  id          String   @id @default(cuid())
+  templateId  Int      @unique @default(autoincrement())
+  name        String
+  description String?
+  content     String   @db.Text
+  category    String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([category])
+}
+
+// News feed for announcements
+model NewsFeed {
+  id          String   @id @default(cuid())
+  newsId      Int      @unique @default(autoincrement())
+  title       String
+  content     String   @db.Text
+  authorId    String
+  isPublished Boolean  @default(false)
+  publishedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  author      User @relation("NewsAuthor", fields: [authorId], references: [id])
+
+  @@index([isPublished])
+  @@index([publishedAt])
+}
+
+// Enhanced role system
+model RoleUpgrade {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  fromRoleId  String
+  toRoleId    String
+  criteria    Json     // Requirements for upgrade
+  isAutomatic Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  fromRole    Role @relation("RoleUpgradeFrom", fields: [fromRoleId], references: [id])
+  toRole      Role @relation("RoleUpgradeTo", fields: [toRoleId], references: [id])
+
+  @@index([isActive])
+  @@index([isAutomatic])
 }

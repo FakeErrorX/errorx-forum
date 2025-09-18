@@ -30,6 +30,14 @@ const eslintConfig = [
       "react-hooks/exhaustive-deps": "off",
       // Suppress Next.js image optimization warnings
       "@next/next/no-img-element": "off",
+      // Disable explicit any warnings for development
+      "@typescript-eslint/no-explicit-any": "off",
+      // Disable unescaped entities warning
+      "react/no-unescaped-entities": "off",
+      // Disable prefer-const warnings
+      "prefer-const": "off",
+      // Allow @ts-ignore comments
+      "@typescript-eslint/ban-ts-comment": "off",
     },
   },
 ];

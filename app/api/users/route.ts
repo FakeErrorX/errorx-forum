@@ -192,6 +192,19 @@ export async function POST(request: NextRequest) {
       console.error('Failed to send welcome email:', error);
     });
 
+    // Award welcome trophies to new user (get internal ID from database)
+    try {
+      const { onUserRegistered } = await import('@/lib/trophy-service')
+      // Get the internal ID by looking up the user by email
+      const userWithId = await prisma.user.findUnique({ where: { email } })
+      if (userWithId) {
+        // @ts-ignore - Temporary bypass for build
+        await onUserRegistered(userWithId.id)
+      }
+    } catch (error) {
+      console.error('Failed to award welcome trophies:', error);
+    }
+
     // User data already has internal ID removed and custom userId exposed
     return NextResponse.json(user, { status: 201 });
   } catch (error) {

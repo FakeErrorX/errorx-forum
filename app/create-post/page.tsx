@@ -12,6 +12,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Icon } from '@iconify/react';
 import { toast } from "sonner";
 import Header from "@/components/layout/header";
+import { BBCodeEditor } from "@/components/ui/bbcode-editor";
+import { FileUpload } from "@/components/ui/file-upload";
+import { AttachmentService } from "@/lib/attachment-service";
 import { useFormValidation } from "@/hooks/use-form-validation";
 import { createPostSchema } from "@/lib/validations";
 
@@ -48,6 +51,8 @@ export default function CreatePostPage() {
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [prefixes, setPrefixes] = useState<{ id: string; name: string; color?: string }[]>([]);
   const [selectedPrefixId, setSelectedPrefixId] = useState<string>("");
+  const [attachments, setAttachments] = useState<any[]>([]);
+  const [uploadingAttachments, setUploadingAttachments] = useState(false);
 
   // Form validation
   const {
@@ -169,6 +174,21 @@ export default function CreatePostPage() {
   // Create post function
   const handleCreatePost = async (values: { title: string; content: string; categoryId: string }) => {
     try {
+      // First upload any pending attachments
+      let attachmentIds: string[] = []
+      if (attachments.length > 0) {
+        setUploadingAttachments(true)
+        try {
+          // If we have uploaded files, use their IDs
+          attachmentIds = attachments.map((file: any) => file.id || file.attachmentId)
+        } catch (error) {
+          console.error('Error processing attachments:', error)
+          throw new Error('Failed to process attachments')
+        } finally {
+          setUploadingAttachments(false)
+        }
+      }
+
       const response = await fetch('/api/posts', {
         method: 'POST',
         headers: {
@@ -179,6 +199,7 @@ export default function CreatePostPage() {
           content: values.content.trim(),
           categoryId: values.categoryId,
           prefixId: selectedPrefixId || undefined,
+          attachmentIds: attachmentIds.length > 0 ? attachmentIds : undefined,
         }),
       });
 
@@ -335,25 +356,51 @@ export default function CreatePostPage() {
                   )}
                 </div>
 
-                {/* Post Content */}
+                {/* Post Content with BBCode Editor */}
                 <div className="space-y-2">
                   <Label htmlFor="content">Post Content *</Label>
-                  <Textarea
-                    id="content"
+                  <BBCodeEditor
                     value={values.content}
-                    onChange={(e) => handleChange("content", e.target.value)}
-                    placeholder="Write your post content here. Be detailed and helpful to the community."
-                    className="min-h-[300px] text-base"
-                    required
-                    minLength={10}
+                    onChange={(value) => handleChange("content", value)}
+                    placeholder="Write your post content here. Use BBCode for rich formatting."
                     maxLength={10000}
+                    showPreview={true}
+                    showValidation={true}
+                    className="min-h-[300px]"
                   />
                   <p className="text-sm text-muted-foreground">
-                    {values.content.length}/10,000 characters
+                    {values.content.length}/10,000 characters • BBCode formatting supported
                   </p>
                   {errors.content && (
                     <p className="text-sm text-red-500">{errors.content}</p>
                   )}
+                </div>
+
+                {/* File Attachments */}
+                <div className="space-y-2">
+                  <Label>File Attachments</Label>
+                  <FileUpload
+                    onFilesUploaded={(uploadedFiles) => {
+                      // Store the uploaded file information for later processing
+                      const fileIds = uploadedFiles.map(file => file.id);
+                      console.log('Files uploaded successfully:', uploadedFiles);
+                      // In a real implementation, you'd store these IDs to attach to the post
+                      setAttachments(uploadedFiles as any[]);
+                    }}
+                    maxFiles={5}
+                    maxFileSize={10 * 1024 * 1024} // 10MB
+                    allowedMimeTypes={[
+                      'image/*',
+                      'application/pdf',
+                      'text/plain',
+                      'application/msword',
+                      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                      'application/zip'
+                    ]}
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Upload up to 5 files (max 10MB each). Supported: images, PDFs, documents, text files, and archives.
+                  </p>
                 </div>
 
                 {/* Form Actions */}
@@ -368,12 +415,12 @@ export default function CreatePostPage() {
                   </Button>
                   <Button
                     type="submit"
-                    disabled={isSubmitting || !values.title.trim() || !values.content.trim() || !values.categoryId}
+                    disabled={isSubmitting || uploadingAttachments || !values.title.trim() || !values.content.trim() || !values.categoryId}
                   >
-                    {isSubmitting ? (
+                    {isSubmitting || uploadingAttachments ? (
                       <>
                         <Icon icon="lucide:loader-2" className="mr-2 h-4 w-4 animate-spin" />
-                        Creating Post...
+                        {uploadingAttachments ? 'Uploading Files...' : 'Creating Post...'}
                       </>
                     ) : (
                       <>

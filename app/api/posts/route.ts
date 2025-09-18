@@ -6,6 +6,7 @@ import { createSecureResponse, createSecureErrorResponse } from "@/lib/api-secur
 import { createPostSchema, paginationSchema, searchSchema } from "@/lib/validations";
 import { validateRequestBody, validateQueryParams, handleValidationError } from "@/lib/api-validation";
 import { PostWithRelations } from "../types";
+import { AttachmentService } from "@/lib/attachment-service";
 import { z } from "zod";
 
 export async function GET(request: NextRequest) {
@@ -46,6 +47,13 @@ export async function GET(request: NextRequest) {
       replies: post.replies,
       createdAt: post.createdAt,
       updatedAt: post.updatedAt,
+      attachments: post.attachments?.map(att => ({
+        id: att.id,
+        filename: att.originalName,
+        size: att.fileSize,
+        mimetype: att.mimeType,
+        url: `/api/attachments/${att.attachmentId}/download`
+      })) || [],
       author: {
         userId: post.author.userId,
         name: post.author.name,
@@ -83,8 +91,11 @@ export async function POST(request: NextRequest) {
 
     // Validate request body
     const body = await request.json();
-    const validatedData = validateRequestBody(createPostSchema, body);
-    const { title, content, categoryId } = validatedData;
+    const validatedData = validateRequestBody(createPostSchema.extend({
+      attachmentIds: z.array(z.string()).optional(),
+      prefixId: z.string().optional()
+    }), body);
+    const { title, content, categoryId, attachmentIds, prefixId } = validatedData;
 
     // Get user's username
     const { getUserProfile } = await import("../users");
@@ -123,6 +134,16 @@ export async function POST(request: NextRequest) {
       replies: 0,
     });
 
+    // Associate attachments with the post if provided
+    if (attachmentIds && attachmentIds.length > 0) {
+      try {
+        await AttachmentService.attachToPost((post as PostWithRelations).id, attachmentIds);
+      } catch (error) {
+        console.error('Error attaching files to post:', error);
+        // Don't fail the entire request for attachment errors
+      }
+    }
+
     // Mentions notifications in post content
     try {
       const mentionRegex = /@([a-zA-Z0-9_]+)/g
@@ -143,6 +164,14 @@ export async function POST(request: NextRequest) {
       }
     } catch (e) {
       console.error('Mention notification failed:', e)
+    }
+
+    // Check for trophies after post creation
+    try {
+      const { onPostCreated } = await import('@/lib/trophy-service')
+      await onPostCreated(userId, (post as PostWithRelations).id)
+    } catch (e) {
+      console.error('Trophy check failed:', e)
     }
 
     // Transform post to hide internal IDs and use custom IDs

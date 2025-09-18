@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { AdminLayout } from '@/components/admin/admin-layout'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -41,7 +42,15 @@ interface Role {
   }
 }
 
-export default function UsersPage() {
+export default function AdminUsersPage() {
+  return (
+    <AdminLayout>
+      <UsersPage />
+    </AdminLayout>
+  )
+}
+
+function UsersPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   type SessionRole = { name: string }
@@ -180,19 +189,6 @@ export default function UsersPage() {
 
   const isAllSelected = filteredUsers.length > 0 && selectedUsers.length === filteredUsers.length
   const isPartiallySelected = selectedUsers.length > 0 && selectedUsers.length < filteredUsers.length
-
-  if (loading) {
-    return (
-      <div className="container mx-auto p-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
-            <p className="mt-2 text-gray-600">Loading users...</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className="container mx-auto p-6">

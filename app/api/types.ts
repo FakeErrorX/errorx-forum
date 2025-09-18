@@ -15,6 +15,16 @@ export interface PostWithRelations {
   replies: number;
   createdAt: Date;
   updatedAt: Date;
+  attachments?: {
+    id: string;
+    attachmentId: number;
+    filename: string;
+    originalName: string;
+    mimeType: string;
+    fileSize: number;
+    downloadCount: number;
+    uploadedAt: Date;
+  }[];
   author: {
     id: string; // Internal database ID (hidden from API)
     userId: number; // Custom sequential user ID (exposed in API)

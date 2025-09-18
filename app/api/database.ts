@@ -104,6 +104,7 @@ export const getPosts = async (limit: number = 25, offset: number = 0, categoryI
       include: {
         author: true,
         category: true,
+        attachments: true
       }
     });
     
@@ -121,6 +122,7 @@ export const getPostById = async (postId: string) => {
       include: {
         author: true,
         category: true,
+        attachments: true,
         comments: {
           include: {
             author: true,
