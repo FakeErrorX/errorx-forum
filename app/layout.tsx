@@ -5,6 +5,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthSessionProvider } from "@/components/session-provider";
+import { PWAProvider } from "@/components/providers/pwa-provider";
 import { GoogleAnalyticsComponent } from "@/components/analytics/google-analytics";
 import { defaultSEO } from "@/lib/seo";
 
@@ -88,6 +89,23 @@ export const metadata: Metadata = {
   verification: {
     google: 'your-google-verification-code', // Replace with actual verification code
   },
+  // PWA metadata
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'ErrorX Forum',
+  },
+  other: {
+    'mobile-web-app-capable': 'yes',
+    'apple-mobile-web-app-capable': 'yes',
+    'apple-mobile-web-app-status-bar-style': 'default',
+    'apple-mobile-web-app-title': 'ErrorX Forum',
+    'application-name': 'ErrorX Forum',
+    'msapplication-TileColor': '#3b82f6',
+    'msapplication-config': '/browserconfig.xml',
+    'theme-color': '#3b82f6',
+  },
 };
 
 interface RootLayoutProps {
@@ -108,8 +126,10 @@ export default function RootLayout({ children }: RootLayoutProps) {
             enableSystem
             disableTransitionOnChange
           >
-            {children}
-            <Toaster />
+            <PWAProvider>
+              {children}
+              <Toaster />
+            </PWAProvider>
           </ThemeProvider>
         </AuthSessionProvider>
         <GoogleAnalyticsComponent gaId={process.env.NEXT_PUBLIC_GA_ID || ''} />

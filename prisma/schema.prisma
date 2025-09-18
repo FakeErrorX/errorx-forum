@@ -88,6 +88,7 @@ model User {
   // Privacy & Security
   privacySettings Json?   @default("{\"showOnline\": true, \"receiveMessages\": true, \"showEmail\": false}")
   emailNotifications Json? @default("{\"replies\": true, \"mentions\": true, \"conversations\": true}")
+  notificationPreferences Json? @default("{\"mentions\":{\"email\":true,\"push\":true,\"realtime\":true},\"replies\":{\"email\":true,\"push\":true,\"realtime\":true},\"follows\":{\"email\":false,\"push\":true,\"realtime\":true},\"likes\":{\"email\":false,\"push\":false,\"realtime\":true},\"messages\":{\"email\":true,\"push\":true,\"realtime\":true},\"system\":{\"email\":true,\"push\":true,\"realtime\":true},\"emailDigest\":\"daily\"}")
   
   // Role and permissions
   roleId        String?   @default("member") // Default role
@@ -108,6 +109,7 @@ model User {
   reports       Report[] @relation("ReportReporter")
   resolvedReports Report[] @relation("ReportResolver")
   notifications Notification[]
+  notificationsFrom Notification[] @relation("NotificationFromUser")
 
   // Reactions & Bookmarks
   reactions     Reaction[]
@@ -122,6 +124,8 @@ model User {
   conversations ConversationParticipant[]
   drafts        Draft[]
   sentMessages  ConversationMessage[] @relation("UserSentMessages")
+  messageReactions MessageReaction[]
+  typingIndicators TypingIndicator[]
 
   // Advanced User Management Relations
   bannedBy      User?          @relation("UserBannedBy", fields: [bannedById], references: [id])
@@ -146,9 +150,61 @@ model User {
   postViews     PostView[]
   newsArticles  NewsFeed[]     @relation("NewsAuthor")
   
+  // Social features relations
+  activityFeed  ActivityFeed[] @relation("ActivityFeedUser")
+  actorActivity ActivityFeed[] @relation("ActivityFeedActor")
+  mentions      Mention[]      @relation("MentionUser")
+  mentionsMade  Mention[]      @relation("MentionMentioner")
+  blockedUsers  UserBlock[]    @relation("UserBlockBlocker")
+  blockedBy     UserBlock[]    @relation("UserBlockBlocked")
+  socialInteractions SocialInteraction[] @relation("SocialInteractionUser")
+  socialInteractionsTarget SocialInteraction[] @relation("SocialInteractionTarget")
+  
   // Node permissions
   nodePermissions NodePermission[]
   moderatedNodes NodeModerator[] @relation("UserNodeModerator")
+
+  // Search and discovery
+  searchQueries         SearchQuery[] @relation("SearchQueryUser")
+  contentRecommendations ContentRecommendation[] @relation("ContentRecommendationUser")
+
+  // Analytics and experiments
+  analyticsEvents       AnalyticsEvent[] @relation("AnalyticsEventUser")
+  userEngagement        UserEngagement[] @relation("UserEngagementUser")
+  experimentsCreated    Experiment[] @relation("ExperimentCreator")
+  experimentParticipation UserExperiment[] @relation("UserExperimentUser")
+
+  // PWA push notifications
+  pushSubscription      PushSubscription? @relation("UserPushSubscription")
+
+  // Content management relations
+  scheduledPosts        ScheduledPost[] @relation("ScheduledPostAuthor")
+  contentVersions       ContentVersion[] @relation("ContentVersionAuthor")
+  moderationRulesCreated ModerationRule[] @relation("ModerationRuleCreator")
+  moderationLogs        ModerationLog[] @relation("ModerationLogModerator")
+  contentTemplates      ContentTemplate[] @relation("TemplateCreator")
+  contentApprovalsSubmitted ContentApproval[] @relation("ContentApprovalSubmitter")
+  contentApprovalsReviewed ContentApproval[] @relation("ContentApprovalReviewer")
+  contentFlagsSubmitted ContentFlag[] @relation("ContentFlagFlagger")
+  contentFlagsReviewed  ContentFlag[] @relation("ContentFlagReviewer")
+
+  // Advanced User Management relations
+  verifications         UserVerification[] @relation("UserVerifications")
+  verificationsIssued   UserVerification[] @relation("VerificationVerifiedBy")
+  bans                  UserBan[] @relation("UserBans")
+  bansIssued            UserBan[] @relation("BansIssued")
+  banAppeals            BanAppeal[] @relation("UserBanAppeals")
+  banAppealsReviewed    BanAppeal[] @relation("BanAppealsReviewed")
+  warningsReceived      UserWarning[] @relation("UserWarningsReceived")
+  warningsIssued        UserWarning[] @relation("UserWarningsIssued")
+  activities            UserActivity[] @relation("UserActivities")
+  profile               UserProfile? @relation("UserProfile")
+  settings              UserSettings? @relation("UserSettings")
+  loginAttempts         UserLoginAttempt[] @relation("UserLoginAttempts")
+  reputationHistory     UserReputationHistory[] @relation("UserReputationHistory")
+  reputationAwarded     UserReputationHistory[] @relation("ReputationAwarded")
+  badgesEarned          UserBadgeEarned[] @relation("UserBadgesEarned")
+  badgesAwarded         UserBadgeEarned[] @relation("BadgesAwarded")
 
   // Indexes for case-insensitive queries
   @@index([username], map: "username_ci_index")
@@ -183,6 +239,8 @@ model Category {
   posts       Post[]
   prefixes    ThreadPrefix[]
   drafts      Draft[]
+  scheduledPosts ScheduledPost[] @relation("ScheduledPostCategory")
+  contentTemplates ContentTemplate[] @relation("TemplateCategory")
 }
 
 model Post {
@@ -203,6 +261,11 @@ model Post {
   replies         Int      @default(0)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  
+  // Content Management fields
+  status          String   @default("PUBLISHED") // DRAFT, PENDING, PUBLISHED, REJECTED, ARCHIVED
+  metadata        Json?    @default("{}")
+  tags            String[] @default([])
 
   // Relations
   category        Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
@@ -210,8 +273,9 @@ model Post {
   featuredBy      User?    @relation("FeaturedByUser", fields: [featuredById], references: [id])
   comments        Comment[]
   postLikes       Like[]   @relation("PostLikes")
+  notifications   Notification[]
 
-  tags            PostTag[]
+  postTags        PostTag[]
   watches         Watch[]
   reactions       Reaction[]
   bookmarks       Bookmark[]
@@ -219,8 +283,10 @@ model Post {
   prefixId        String?
   prefix          ThreadPrefix? @relation(fields: [prefixId], references: [id])
   attachments     PostSimpleAttachment[]
-
+  scheduledPost   ScheduledPost? @relation("ScheduledToPost")
+  
   @@index([isFeatured, featuredAt])
+  @@index([status])
 }
 
 model Comment {
@@ -242,6 +308,7 @@ model Comment {
   replies         Comment[] @relation("CommentReplies")
   commentLikes    Like[]   @relation("CommentLikes")
   reactions       Reaction[]
+  notifications   Notification[]
 }
 
 model Like {
@@ -374,6 +441,7 @@ model ThreadPrefix {
   nodes      Node[]    @relation("NodePrefixes")
   posts      Post[]
   enhancedPosts EnhancedPost[]
+  scheduledPosts ScheduledPost[] @relation("ScheduledPostPrefix")
 
   @@index([categoryId])
 }
@@ -420,17 +488,27 @@ model Report {
 model Notification {
   id        String   @id @default(cuid())
   userId    String
-  type      String
+  type      String   // mention, reply, follow, like, trophy, message, system, warning, ban
   title     String
   message   String
   data      Json?
   isRead    Boolean  @default(false)
+  readAt    DateTime?
+  fromUserId String?
+  postId    String?
+  commentId String?
+  conversationId String?
   createdAt DateTime @default(now())
 
   user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fromUser  User? @relation("NotificationFromUser", fields: [fromUserId], references: [id], onDelete: SetNull)
+  post      Post? @relation(fields: [postId], references: [id], onDelete: Cascade)
+  comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  conversation Conversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   @@index([userId, isRead])
   @@index([createdAt])
+  @@index([type])
 }
 
 model PasswordReset {
@@ -449,13 +527,22 @@ model PasswordReset {
 
 // Conversations (private messages)
 model Conversation {
-  id        String   @id @default(cuid())
-  title     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  title       String?
+  type        String   @default("direct") // direct, group
+  description String?
+  isArchived  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  lastMessageAt DateTime?
 
   messages      ConversationMessage[]
   participants  ConversationParticipant[]
+  notifications Notification[]
+  typingIndicators TypingIndicator[]
+
+  @@index([type])
+  @@index([lastMessageAt])
 }
 
 model ConversationParticipant {
@@ -465,6 +552,9 @@ model ConversationParticipant {
   joinedAt       DateTime @default(now())
   lastReadAt     DateTime?
   isOwner        Boolean  @default(false)
+  isAdmin        Boolean  @default(false)
+  isMuted        Boolean  @default(false)
+  leftAt         DateTime?
 
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -478,12 +568,69 @@ model ConversationMessage {
   conversationId String
   senderId       String
   content        String   @db.Text
+  type           String   @default("text") // text, image, file, system, voice
+  status         String   @default("sent") // sent, delivered, read
+  editedAt       DateTime?
+  deletedAt      DateTime?
+  replyToId      String?
   createdAt      DateTime @default(now())
 
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sender         User         @relation("UserSentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  replyTo        ConversationMessage? @relation("MessageReplies", fields: [replyToId], references: [id])
+  replies        ConversationMessage[] @relation("MessageReplies")
+  
+  attachments    MessageAttachment[]
+  reactions      MessageReaction[]
 
   @@index([conversationId])
+  @@index([senderId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model MessageAttachment {
+  id        String   @id @default(cuid())
+  messageId String
+  fileName  String
+  fileUrl   String
+  fileType  String
+  fileSize  Int
+  createdAt DateTime @default(now())
+
+  message   ConversationMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+}
+
+model MessageReaction {
+  id        String   @id @default(cuid())
+  messageId String
+  userId    String
+  emoji     String
+  createdAt DateTime @default(now())
+
+  message   ConversationMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji])
+  @@index([messageId])
+  @@index([userId])
+}
+
+model TypingIndicator {
+  id             String   @id @default(cuid())
+  conversationId String
+  userId         String
+  startedAt      DateTime @default(now())
+  expiresAt      DateTime
+
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([conversationId])
+  @@index([expiresAt])
 }
 
 // Follow / Ignore
@@ -1097,6 +1244,167 @@ model NewsFeed {
   @@index([publishedAt])
 }
 
+// Activity feed system for social features
+model ActivityFeed {
+  id           String   @id @default(cuid())
+  userId       String   // Who this activity is for (recipient)
+  actorId      String   // Who performed the action
+  type         String   // 'follow', 'post_created', 'comment_created', 'like_given', 'mention', etc.
+  entityType   String   // 'user', 'post', 'comment', etc.
+  entityId     String?  // ID of the entity involved
+  metadata     Json?    // Additional data (post title, comment content preview, etc.)
+  isRead       Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  user         User @relation("ActivityFeedUser", fields: [userId], references: [id], onDelete: Cascade)
+  actor        User @relation("ActivityFeedActor", fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([actorId])
+  @@index([type])
+  @@index([isRead])
+}
+
+// User mentions in posts and comments
+model Mention {
+  id           String   @id @default(cuid())
+  userId       String   // Who was mentioned
+  mentionerId  String   // Who mentioned them
+  entityType   String   // 'post', 'comment', 'message'
+  entityId     String   // ID of the post/comment/message
+  isRead       Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  user         User @relation("MentionUser", fields: [userId], references: [id], onDelete: Cascade)
+  mentioner    User @relation("MentionMentioner", fields: [mentionerId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([mentionerId])
+  @@index([entityType, entityId])
+}
+
+// User blocking system (enhanced from ignore)
+model UserBlock {
+  id          String   @id @default(cuid())
+  blockerId   String   // Who blocked
+  blockedId   String   // Who was blocked
+  reason      String?  // Optional reason for blocking
+  createdAt   DateTime @default(now())
+
+  blocker     User @relation("UserBlockBlocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked     User @relation("UserBlockBlocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+  @@index([blockedId])
+}
+
+// Social interaction logs
+model SocialInteraction {
+  id           String   @id @default(cuid())
+  userId       String   // Who performed the action
+  targetUserId String?  // Target user (for follows, blocks, etc.)
+  type         String   // 'profile_view', 'follow', 'unfollow', 'block', 'unblock'
+  metadata     Json?    // Additional context
+  createdAt    DateTime @default(now())
+
+  user         User @relation("SocialInteractionUser", fields: [userId], references: [id], onDelete: Cascade)
+  targetUser   User? @relation("SocialInteractionTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+  @@index([targetUserId])
+  @@index([createdAt])
+}
+
+// Search analytics and discovery features
+model SearchQuery {
+  id            String   @id @default(cuid())
+  userId        String?  // Optional - can track anonymous searches
+  query         String   // The search term
+  filters       Json?    // Applied filters (category, tags, date range, etc.)
+  resultCount   Int      @default(0)
+  clickedResult String?  // Which result was clicked
+  searchType    String   @default("general") // 'general', 'posts', 'users', 'tags'
+  metadata      Json?    // Additional context
+  createdAt     DateTime @default(now())
+
+  user          User? @relation("SearchQueryUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([query])
+  @@index([userId])
+  @@index([searchType])
+  @@index([createdAt])
+}
+
+// Trending topics and hashtags
+model TrendingTopic {
+  id            String   @id @default(cuid())
+  topic         String   @unique // The trending topic/hashtag
+  mentions      Int      @default(1) // Number of mentions
+  score         Float    @default(0) // Trending score
+  category      String?  // Optional category
+  timeframe     String   @default("24h") // '1h', '24h', '7d', '30d'
+  lastMentioned DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([score])
+  @@index([timeframe, score])
+  @@index([lastMentioned])
+}
+
+// Content indexing for full-text search
+model SearchIndex {
+  id          String   @id @default(cuid())
+  contentType String   // 'post', 'comment', 'user', 'category'
+  contentId   String   // ID of the content
+  title       String?  // Title (for posts, categories)
+  content     String   @db.Text // Full content for search
+  keywords    String[] // Extracted keywords
+  metadata    Json?    // Additional searchable metadata
+  searchVector String? @db.Text // For PostgreSQL full-text search
+  updatedAt   DateTime @updatedAt
+
+  @@unique([contentType, contentId])
+  @@index([contentType])
+  @@index([keywords])
+}
+
+// Search suggestions and autocomplete
+model SearchSuggestion {
+  id            String   @id @default(cuid())
+  suggestion    String   @unique
+  searchCount   Int      @default(1)
+  resultCount   Int      @default(0)
+  category      String?  // Optional category
+  type          String   @default("query") // 'query', 'tag', 'user', 'category'
+  lastUsed      DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  @@index([searchCount])
+  @@index([suggestion])
+  @@index([type])
+}
+
+// Popular and recommended content
+model ContentRecommendation {
+  id            String   @id @default(cuid())
+  userId        String   // Who the recommendation is for
+  contentType   String   // 'post', 'user', 'category', 'tag'
+  contentId     String   // ID of recommended content
+  score         Float    @default(0) // Recommendation score
+  reason        String   // Why this was recommended
+  metadata      Json?    // Additional context
+  isViewed      Boolean  @default(false)
+  isInteracted  Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  user          User @relation("ContentRecommendationUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, score])
+  @@index([contentType, contentId])
+  @@index([createdAt])
+}
+
 // Enhanced role system
 model RoleUpgrade {
   id          String   @id @default(cuid())
@@ -1114,4 +1422,729 @@ model RoleUpgrade {
 
   @@index([isActive])
   @@index([isAutomatic])
+}
+
+// Analytics and insights models
+model AnalyticsEvent {
+  id          String   @id @default(cuid())
+  eventType   String   // 'page_view', 'post_create', 'comment_create', 'user_register', etc.
+  userId      String?  // Optional for anonymous events
+  sessionId   String?  // Session tracking
+  entityType  String?  // 'post', 'user', 'category', etc.
+  entityId    String?  // ID of the entity
+  properties  Json?    // Additional event properties
+  userAgent   String?  // Browser/client info
+  ipAddress   String?  // IP for geo analytics
+  referrer    String?  // Where they came from
+  pathname    String?  // Page they were on
+  createdAt   DateTime @default(now())
+
+  user        User? @relation("AnalyticsEventUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([eventType])
+  @@index([userId])
+  @@index([sessionId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@index([pathname])
+}
+
+// Daily aggregated metrics
+model DailyMetrics {
+  id                String   @id @default(cuid())
+  date              DateTime @unique @db.Date
+  totalUsers        Int      @default(0)
+  activeUsers       Int      @default(0)
+  newUsers          Int      @default(0)
+  totalPosts        Int      @default(0)
+  newPosts          Int      @default(0)
+  totalComments     Int      @default(0)
+  newComments       Int      @default(0)
+  pageViews         Int      @default(0)
+  uniqueVisitors    Int      @default(0)
+  avgSessionTime    Float    @default(0) // in minutes
+  bounceRate        Float    @default(0) // percentage
+  topPosts          Json?    // Most popular posts
+  topCategories     Json?    // Most active categories
+  userGrowthRate    Float    @default(0) // percentage
+  engagementRate    Float    @default(0) // percentage
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([date])
+}
+
+// User engagement tracking
+model UserEngagement {
+  id            String   @id @default(cuid())
+  userId        String
+  date          DateTime @db.Date
+  sessionsCount Int      @default(0)
+  totalTime     Int      @default(0) // in minutes
+  postsCreated  Int      @default(0)
+  commentsCreated Int    @default(0)
+  likesGiven    Int      @default(0)
+  likesReceived Int      @default(0)
+  messagesRead  Int      @default(0)
+  messagesSent  Int      @default(0)
+  pageViews     Int      @default(0)
+  lastActivity  DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  user          User @relation("UserEngagementUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([date])
+  @@index([lastActivity])
+}
+
+// Content performance metrics
+model ContentMetrics {
+  id            String   @id @default(cuid())
+  contentType   String   // 'post', 'comment', 'category'
+  contentId     String
+  date          DateTime @db.Date
+  views         Int      @default(0)
+  uniqueViews   Int      @default(0)
+  likes         Int      @default(0)
+  comments      Int      @default(0)
+  shares        Int      @default(0)
+  clickRate     Float    @default(0) // percentage
+  engagementRate Float   @default(0) // percentage
+  bounceRate    Float    @default(0) // percentage
+  avgTimeSpent  Float    @default(0) // in minutes
+  createdAt     DateTime @default(now())
+
+  @@unique([contentType, contentId, date])
+  @@index([contentType])
+  @@index([date])
+  @@index([views])
+  @@index([engagementRate])
+}
+
+// Traffic sources and referrals
+model TrafficSource {
+  id          String   @id @default(cuid())
+  date        DateTime @db.Date
+  source      String   // 'direct', 'search', 'social', 'referral', etc.
+  medium      String?  // 'organic', 'cpc', 'email', etc.
+  campaign    String?  // UTM campaign
+  referrer    String?  // Full referrer URL
+  visitors    Int      @default(0)
+  pageViews   Int      @default(0)
+  sessions    Int      @default(0)
+  bounceRate  Float    @default(0)
+  avgSessionTime Float @default(0)
+  conversions Int      @default(0) // registrations, etc.
+  createdAt   DateTime @default(now())
+
+  @@unique([date, source, medium, campaign, referrer])
+  @@index([date])
+  @@index([source])
+  @@index([visitors])
+}
+
+// Performance monitoring
+model PerformanceMetrics {
+  id                String   @id @default(cuid())
+  date              DateTime @db.Date
+  avgResponseTime   Float    @default(0) // in milliseconds
+  p95ResponseTime   Float    @default(0) // 95th percentile
+  errorRate         Float    @default(0) // percentage
+  uptime            Float    @default(100) // percentage
+  dbQueryTime       Float    @default(0) // average in ms
+  slowQueries       Int      @default(0) // count of slow queries
+  cacheHitRate      Float    @default(0) // percentage
+  memoryUsage       Float    @default(0) // percentage
+  cpuUsage          Float    @default(0) // percentage
+  diskUsage         Float    @default(0) // percentage
+  createdAt         DateTime @default(now())
+
+  @@unique([date])
+  @@index([date])
+  @@index([avgResponseTime])
+  @@index([errorRate])
+}
+
+// A/B testing and experiments
+model Experiment {
+  id            String   @id @default(cuid())
+  name          String   @unique
+  description   String?
+  status        String   @default("draft") // 'draft', 'running', 'completed', 'paused'
+  startDate     DateTime?
+  endDate       DateTime?
+  targetMetric  String   // 'conversion_rate', 'engagement', 'retention', etc.
+  variants      Json     // Experiment variants configuration
+  trafficSplit  Json     // How traffic is split between variants
+  results       Json?    // Experiment results
+  isActive      Boolean  @default(false)
+  createdBy     String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  creator       User @relation("ExperimentCreator", fields: [createdBy], references: [id])
+  participants  UserExperiment[] @relation("UserExperimentExperiment")
+
+  @@index([status])
+  @@index([isActive])
+  @@index([startDate])
+}
+
+// User experiment participation
+model UserExperiment {
+  id           String   @id @default(cuid())
+  userId       String
+  experimentId String
+  variant      String   // Which variant the user is in
+  assignedAt   DateTime @default(now())
+  converted    Boolean  @default(false)
+  convertedAt  DateTime?
+
+  user         User @relation("UserExperimentUser", fields: [userId], references: [id], onDelete: Cascade)
+  experiment   Experiment @relation("UserExperimentExperiment", fields: [experimentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, experimentId])
+  @@index([experimentId])
+  @@index([variant])
+  @@index([converted])
+}
+
+// Push notification subscriptions for PWA
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  endpoint  String
+  keys      Json     // Contains p256dh and auth keys
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User @relation("UserPushSubscription", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// Content scheduling and publishing
+model ScheduledPost {
+  id            String   @id @default(cuid())
+  title         String
+  content       String   @db.Text
+  categoryId    String
+  authorId      String
+  scheduledFor  DateTime
+  published     Boolean  @default(false)
+  publishedAt   DateTime?
+  postId        String?  @unique // Reference to the actual post when published
+  tags          String[] // Store as array
+  prefixId      String?
+  metadata      Json?    // Additional metadata like images, attachments
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  category      Category @relation("ScheduledPostCategory", fields: [categoryId], references: [id], onDelete: Cascade)
+  author        User @relation("ScheduledPostAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  prefix        ThreadPrefix? @relation("ScheduledPostPrefix", fields: [prefixId], references: [id])
+  post          Post? @relation("ScheduledToPost", fields: [postId], references: [id])
+
+  @@index([scheduledFor])
+  @@index([published])
+  @@index([authorId])
+}
+
+// Content versioning and history
+model ContentVersion {
+  id            String   @id @default(cuid())
+  contentId     String   // Post or Comment ID
+  contentType   ContentType
+  version       Int
+  title         String?  // Only for posts
+  content       String   @db.Text
+  changeReason  String?
+  authorId      String
+  createdAt     DateTime @default(now())
+
+  author        User @relation("ContentVersionAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@unique([contentId, version])
+  @@index([contentId])
+  @@index([contentType])
+}
+
+// Auto-moderation system
+model ModerationRule {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  enabled       Boolean  @default(true)
+  ruleType      ModerationRuleType
+  conditions    Json     // Store conditions as JSON (keywords, patterns, etc.)
+  actions       Json     // Store actions as JSON (hide, flag, delete, etc.)
+  severity      ModerationSeverity @default(MEDIUM)
+  createdBy     String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  creator       User @relation("ModerationRuleCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  logs          ModerationLog[]
+
+  @@index([enabled])
+  @@index([ruleType])
+}
+
+model ModerationLog {
+  id            String   @id @default(cuid())
+  ruleId        String?
+  contentId     String
+  contentType   ContentType
+  action        ModerationAction
+  reason        String
+  automated     Boolean  @default(false)
+  moderatorId   String?
+  appealed      Boolean  @default(false)
+  appealedAt    DateTime?
+  appealReason  String?
+  appealStatus  AppealStatus @default(PENDING)
+  createdAt     DateTime @default(now())
+
+  rule          ModerationRule? @relation(fields: [ruleId], references: [id])
+  moderator     User? @relation("ModerationLogModerator", fields: [moderatorId], references: [id])
+
+  @@index([contentId])
+  @@index([contentType])
+  @@index([automated])
+  @@index([appealStatus])
+}
+
+// Content templates for quick posting
+model ContentTemplate {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  title         String?
+  content       String   @db.Text
+  categoryId    String?
+  tags          String[]
+  isPublic      Boolean  @default(false)
+  createdBy     String
+  usageCount    Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  category      Category? @relation("TemplateCategory", fields: [categoryId], references: [id])
+  creator       User @relation("TemplateCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@index([isPublic])
+  @@index([createdBy])
+}
+
+// Content approval workflow
+model ContentApproval {
+  id            String   @id @default(cuid())
+  contentId     String
+  contentType   ContentType
+  status        ApprovalStatus @default(PENDING)
+  submittedBy   String
+  reviewedBy    String?
+  reviewNotes   String?
+  submittedAt   DateTime @default(now())
+  reviewedAt    DateTime?
+
+  submitter     User @relation("ContentApprovalSubmitter", fields: [submittedBy], references: [id], onDelete: Cascade)
+  reviewer      User? @relation("ContentApprovalReviewer", fields: [reviewedBy], references: [id])
+
+  @@unique([contentId, contentType])
+  @@index([status])
+  @@index([submittedBy])
+}
+
+// Content flags and reports enhancement
+model ContentFlag {
+  id            String   @id @default(cuid())
+  contentId     String
+  contentType   ContentType
+  flagType      FlagType
+  reason        String
+  description   String?
+  flaggedBy     String
+  status        FlagStatus @default(OPEN)
+  reviewedBy    String?
+  reviewNotes   String?
+  flaggedAt     DateTime @default(now())
+  reviewedAt    DateTime?
+
+  flagger       User @relation("ContentFlagFlagger", fields: [flaggedBy], references: [id], onDelete: Cascade)
+  reviewer      User? @relation("ContentFlagReviewer", fields: [reviewedBy], references: [id])
+
+  @@index([contentId])
+  @@index([contentType])
+  @@index([status])
+  @@index([flagType])
+}
+
+// Enums for content management
+enum ContentType {
+  POST
+  COMMENT
+  DRAFT
+}
+
+enum ModerationRuleType {
+  KEYWORD_FILTER
+  SPAM_DETECTION
+  TOXICITY_FILTER
+  LINK_VALIDATION
+  IMAGE_MODERATION
+  USER_BEHAVIOR
+  CONTENT_LENGTH
+  RATE_LIMITING
+}
+
+enum ModerationSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ModerationAction {
+  FLAG
+  HIDE
+  DELETE
+  SHADOW_BAN
+  TEMP_BAN
+  PERM_BAN
+  REQUIRE_APPROVAL
+  ADD_WARNING
+}
+
+enum AppealStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  UNDER_REVIEW
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REQUIRES_CHANGES
+}
+
+enum FlagType {
+  SPAM
+  INAPPROPRIATE
+  HARASSMENT
+  MISINFORMATION
+  COPYRIGHT
+  OFF_TOPIC
+  DUPLICATE
+  OTHER
+}
+
+enum FlagStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+  DISMISSED
+  ESCALATED
+}
+
+// Advanced User Management Enums
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  BANNED
+  PENDING_VERIFICATION
+  DEACTIVATED
+}
+
+enum VerificationStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum VerificationType {
+  EMAIL
+  PHONE
+  IDENTITY
+  EXPERT
+  ORGANIZATION
+}
+
+enum UserActivityType {
+  LOGIN
+  LOGOUT
+  POST_CREATED
+  COMMENT_CREATED
+  PROFILE_UPDATED
+  PASSWORD_CHANGED
+  EMAIL_CHANGED
+  ACCOUNT_LOCKED
+  ACCOUNT_UNLOCKED
+  SUSPENSION
+  BAN
+  WARNING_ISSUED
+  REPUTATION_CHANGED
+}
+
+enum BanType {
+  TEMPORARY
+  PERMANENT
+  IP_BAN
+  SHADOW_BAN
+}
+
+enum WarningType {
+  MINOR
+  MAJOR
+  SEVERE
+  FINAL
+}
+
+// Advanced User Management Models
+
+model UserVerification {
+  id            String   @id @default(cuid())
+  userId        String
+  type          VerificationType
+  status        VerificationStatus @default(UNVERIFIED)
+  verificationCode String?
+  verificationToken String?
+  documentUrl   String?  // For identity verification
+  notes         String?  @db.Text
+  verifiedById  String?
+  verifiedAt    DateTime?
+  expiresAt     DateTime?
+  rejectionReason String? @db.Text
+  metadata      Json?    @default("{}")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User @relation("UserVerifications", fields: [userId], references: [id], onDelete: Cascade)
+  verifiedBy    User? @relation("VerificationVerifiedBy", fields: [verifiedById], references: [id])
+
+  @@unique([userId, type])
+  @@index([status])
+  @@index([type])
+}
+
+model UserBan {
+  id            String   @id @default(cuid())
+  userId        String
+  bannedById    String
+  type          BanType
+  reason        String   @db.Text
+  publicReason  String?  @db.Text // Public-facing reason
+  duration      Int?     // Duration in minutes (null for permanent)
+  expiresAt     DateTime?
+  isActive      Boolean  @default(true)
+  ipAddress     String?
+  metadata      Json?    @default("{}")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User @relation("UserBans", fields: [userId], references: [id], onDelete: Cascade)
+  bannedBy      User @relation("BansIssued", fields: [bannedById], references: [id])
+  appeals       BanAppeal[]
+
+  @@index([userId])
+  @@index([isActive])
+  @@index([expiresAt])
+}
+
+model BanAppeal {
+  id            String   @id @default(cuid())
+  banId         String
+  userId        String
+  reason        String   @db.Text
+  status        AppealStatus @default(PENDING)
+  reviewedById  String?
+  reviewedAt    DateTime?
+  reviewNotes   String?  @db.Text
+  resolution    String?  @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  ban           UserBan @relation(fields: [banId], references: [id], onDelete: Cascade)
+  user          User @relation("UserBanAppeals", fields: [userId], references: [id], onDelete: Cascade)
+  reviewedBy    User? @relation("BanAppealsReviewed", fields: [reviewedById], references: [id])
+
+  @@index([status])
+  @@index([userId])
+}
+
+model UserWarning {
+  id            String   @id @default(cuid())
+  userId        String
+  issuedById    String
+  type          WarningType
+  title         String
+  reason        String   @db.Text
+  points        Int      @default(1)
+  expiresAt     DateTime?
+  isActive      Boolean  @default(true)
+  metadata      Json?    @default("{}")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User @relation("UserWarningsReceived", fields: [userId], references: [id], onDelete: Cascade)
+  issuedBy      User @relation("UserWarningsIssued", fields: [issuedById], references: [id])
+
+  @@index([userId])
+  @@index([isActive])
+  @@index([expiresAt])
+}
+
+model UserActivity {
+  id            String   @id @default(cuid())
+  userId        String
+  type          UserActivityType
+  description   String
+  ipAddress     String?
+  userAgent     String?
+  location      String?  // Geolocation data
+  metadata      Json?    @default("{}")
+  createdAt     DateTime @default(now())
+
+  user          User @relation("UserActivities", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model UserProfile {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  displayName   String?
+  firstName     String?
+  lastName      String?
+  dateOfBirth   DateTime?
+  gender        String?
+  phoneNumber   String?
+  address       Json?    // Structured address data
+  socialLinks   Json?    @default("{}") // Social media links
+  interests     String[] // User interests/tags
+  skills        String[] // User skills/expertise
+  education     Json?    // Education history
+  experience    Json?    // Work experience
+  certifications Json?   // Professional certifications
+  languages     String[] // Languages spoken
+  timezone      String?
+  profileViews  Int      @default(0)
+  profileScore  Int      @default(0) // Calculated profile completeness score
+  isPublic      Boolean  @default(true)
+  showOnline    Boolean  @default(true)
+  allowMessages Boolean  @default(true)
+  allowFollows  Boolean  @default(true)
+  metadata      Json?    @default("{}")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User @relation("UserProfile", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([profileScore])
+  @@index([isPublic])
+}
+
+model UserSettings {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  theme         String   @default("system")
+  language      String   @default("en")
+  timezone      String   @default("UTC")
+  emailNotifications Json? @default("{\"replies\":true,\"mentions\":true,\"messages\":true,\"digest\":\"weekly\"}")
+  pushNotifications Json?  @default("{\"replies\":true,\"mentions\":true,\"messages\":true}")
+  privacySettings Json?   @default("{\"showEmail\":false,\"showPhone\":false,\"showOnline\":true}")
+  contentSettings Json?   @default("{\"autoplayVideos\":true,\"showImages\":true,\"nsfwContent\":false}")
+  moderationSettings Json? @default("{\"hideWarned\":false,\"hideDownvoted\":false}")
+  customSettings Json?    @default("{}")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User @relation("UserSettings", fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model UserLoginAttempt {
+  id            String   @id @default(cuid())
+  email         String
+  ipAddress     String
+  userAgent     String?
+  isSuccessful  Boolean
+  failureReason String?
+  userId        String? // Only set if login was successful
+  location      String?
+  metadata      Json?    @default("{}")
+  createdAt     DateTime @default(now())
+
+  user          User? @relation("UserLoginAttempts", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([email])
+  @@index([ipAddress])
+  @@index([isSuccessful])
+  @@index([createdAt])
+}
+
+model UserReputationHistory {
+  id            String   @id @default(cuid())
+  userId        String
+  change        Int      // Positive or negative change
+  previousValue Int
+  newValue      Int
+  reason        String
+  sourceId      String?  // ID of post, comment, etc. that caused the change
+  sourceType    String?  // "post", "comment", "badge", etc.
+  awardedById   String?
+  metadata      Json?    @default("{}")
+  createdAt     DateTime @default(now())
+
+  user          User @relation("UserReputationHistory", fields: [userId], references: [id], onDelete: Cascade)
+  awardedBy     User? @relation("ReputationAwarded", fields: [awardedById], references: [id])
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model UserBadge {
+  id            String   @id @default(cuid())
+  name          String   @unique
+  displayName   String
+  description   String   @db.Text
+  icon          String?
+  color         String?
+  category      String?
+  rarity        String   @default("common") // common, rare, epic, legendary
+  points        Int      @default(0) // Reputation points awarded
+  requirements  Json     // Requirements to earn this badge
+  isActive      Boolean  @default(true)
+  metadata      Json?    @default("{}")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  userBadges    UserBadgeEarned[]
+
+  @@index([category])
+  @@index([rarity])
+  @@index([isActive])
+}
+
+model UserBadgeEarned {
+  id            String   @id @default(cuid())
+  userId        String
+  badgeId       String
+  earnedAt      DateTime @default(now())
+  awardedById   String?
+  reason        String?
+  metadata      Json?    @default("{}")
+
+  user          User @relation("UserBadgesEarned", fields: [userId], references: [id], onDelete: Cascade)
+  badge         UserBadge @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  awardedBy     User? @relation("BadgesAwarded", fields: [awardedById], references: [id])
+
+  @@unique([userId, badgeId])
+  @@index([earnedAt])
 }

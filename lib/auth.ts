@@ -7,7 +7,7 @@ import bcrypt from "bcryptjs"
 import { generateUniqueUsername } from "./username-generator"
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
+  adapter: PrismaAdapter(prisma) as any,
   providers: [
     CredentialsProvider({
       name: "credentials",
@@ -55,7 +55,8 @@ export const authOptions: NextAuthOptions = {
         }
 
         return {
-          id: (user as { userId: number }).userId.toString(), // Use custom userId as the session ID
+          id: user.id, // Use the actual Prisma ID
+          userId: user.userId.toString(), // Convert to string and include the custom userId field
           email: user.email,
           name: user.name,
           image: user.image,
@@ -135,7 +136,7 @@ export const authOptions: NextAuthOptions = {
             
             token.id = (dbUser as { userId: number }).userId.toString()
             token.userId = (dbUser as { userId: number }).userId.toString()
-            token.role = dbUser.role
+            token.role = dbUser.role || undefined
           }
         } else {
           // Credentials provider - user.id is already the userId
@@ -158,7 +159,7 @@ export const authOptions: NextAuthOptions = {
           });
           
           if (dbUser) {
-            token.role = dbUser.role
+            token.role = dbUser.role || undefined
           }
         }
       }

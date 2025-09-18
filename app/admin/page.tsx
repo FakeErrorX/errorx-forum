@@ -210,9 +210,41 @@ export default function AdminPage() {
         </Card>
       </div>
 
+      {/* Analytics Quick Access */}
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5 text-blue-500" />
+            Analytics & Insights
+          </CardTitle>
+          <CardDescription>
+            View comprehensive analytics and performance metrics for your forum
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-4">
+            <Link href="/admin/analytics">
+              <Button className="flex items-center gap-2">
+                <BarChart3 className="h-4 w-4" />
+                View Analytics Dashboard
+              </Button>
+            </Link>
+            <Button variant="outline" className="flex items-center gap-2">
+              <Activity className="h-4 w-4" />
+              Real-time Monitoring
+            </Button>
+            <Button variant="outline" className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Performance Reports
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <Tabs defaultValue="overview" className="space-y-6">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="roles">Roles</TabsTrigger>
           <TabsTrigger value="reports">Reports</TabsTrigger>
@@ -297,6 +329,61 @@ export default function AdminPage() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="analytics" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                Analytics & Insights
+              </CardTitle>
+              <CardDescription>
+                Comprehensive analytics dashboard with real-time metrics and user insights
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                <div className="p-4 bg-blue-50 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <BarChart3 className="h-5 w-5 text-blue-600" />
+                    <h4 className="font-medium">Dashboard Overview</h4>
+                  </div>
+                  <p className="text-sm text-gray-600">Complete metrics and KPIs</p>
+                </div>
+                <div className="p-4 bg-green-50 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Users className="h-5 w-5 text-green-600" />
+                    <h4 className="font-medium">User Analytics</h4>
+                  </div>
+                  <p className="text-sm text-gray-600">Individual user insights</p>
+                </div>
+                <div className="p-4 bg-purple-50 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Activity className="h-5 w-5 text-purple-600" />
+                    <h4 className="font-medium">Real-time Data</h4>
+                  </div>
+                  <p className="text-sm text-gray-600">Live activity monitoring</p>
+                </div>
+              </div>
+              <div className="flex gap-4">
+                <Link href="/admin/analytics">
+                  <Button className="flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4" />
+                    Open Analytics Dashboard
+                  </Button>
+                </Link>
+                <Button variant="outline" className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4" />
+                  Export Reports
+                </Button>
+                <Button variant="outline" className="flex items-center gap-2">
+                  <Activity className="h-4 w-4" />
+                  Configure Tracking
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="users" className="space-y-6">

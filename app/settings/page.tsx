@@ -346,10 +346,11 @@ export default function SettingsPage() {
 
         {/* Settings Tabs */}
         <Tabs defaultValue="account" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="account">Account</TabsTrigger>
             <TabsTrigger value="preferences">Preferences</TabsTrigger>
             <TabsTrigger value="security">Security</TabsTrigger>
+            <TabsTrigger value="pwa">PWA</TabsTrigger>
           </TabsList>
 
           {/* Account Settings */}
@@ -676,6 +677,58 @@ export default function SettingsPage() {
                         Active
                       </Badge>
                     </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* PWA Settings */}
+          <TabsContent value="pwa" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Icon icon="material-symbols:smartphone" className="h-5 w-5" />
+                  Progressive Web App
+                </CardTitle>
+                <CardDescription>
+                  Manage your PWA experience, offline access, and push notifications
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="text-center py-8">
+                  <Icon icon="material-symbols:smartphone" className="h-12 w-12 text-blue-500 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium mb-2">PWA Settings</h3>
+                  <p className="text-gray-600 mb-4">
+                    Configure your Progressive Web App experience with installation, 
+                    notifications, and offline features.
+                  </p>
+                  <Button 
+                    onClick={() => router.push('/settings/pwa')}
+                    className="flex items-center gap-2"
+                  >
+                    <Icon icon="material-symbols:settings" className="h-4 w-4" />
+                    Open PWA Settings
+                  </Button>
+                </div>
+
+                <Separator />
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="text-center p-4 bg-blue-50 rounded-lg">
+                    <Icon icon="material-symbols:download" className="h-6 w-6 text-blue-600 mx-auto mb-2" />
+                    <h4 className="font-medium text-sm mb-1">App Installation</h4>
+                    <p className="text-xs text-gray-600">Install as native app</p>
+                  </div>
+                  <div className="text-center p-4 bg-green-50 rounded-lg">
+                    <Icon icon="material-symbols:notifications" className="h-6 w-6 text-green-600 mx-auto mb-2" />
+                    <h4 className="font-medium text-sm mb-1">Push Notifications</h4>
+                    <p className="text-xs text-gray-600">Real-time updates</p>
+                  </div>
+                  <div className="text-center p-4 bg-purple-50 rounded-lg">
+                    <Icon icon="material-symbols:cloud-off" className="h-6 w-6 text-purple-600 mx-auto mb-2" />
+                    <h4 className="font-medium text-sm mb-1">Offline Access</h4>
+                    <p className="text-xs text-gray-600">Browse without internet</p>
                   </div>
                 </div>
               </CardContent>
