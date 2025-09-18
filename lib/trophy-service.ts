@@ -353,7 +353,7 @@ export class TrophyService {
    */
   private static async logTrophyEvent(event: TrophyAwardEvent): Promise<void> {
     // Placeholder - implement when audit log system is available
-    console.log('Trophy event:', event)
+    // console.log('Trophy event:', event)
   }
 
   /**
@@ -382,7 +382,7 @@ export class TrophyService {
       //   }
       // })
 
-      console.log(`Trophy awarded notification for user ${userId}: ${trophy.name}`)
+      // console.log(`Trophy awarded notification for user ${userId}: ${trophy.name}`)
     } catch (error) {
       console.error('Error creating trophy notification:', error)
     }
@@ -467,7 +467,7 @@ export class TrophyService {
       await this.awardTrophy(userId, trophyId)
       
       // Log manual award (when audit system is available)
-      console.log(`Trophy ${trophyId} manually awarded to user ${userId} by ${awardedBy}`)
+      // console.log(`Trophy ${trophyId} manually awarded to user ${userId} by ${awardedBy}`)
       
       return true
     } catch (error) {

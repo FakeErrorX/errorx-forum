@@ -46,7 +46,7 @@ class WebSocketManager {
     })
 
     this.io.on('connection', (socket) => {
-      console.log('Socket connected:', socket.id)
+      // console.log('Socket connected:', socket.id)
 
       // Handle authentication  
       socket.on('authenticate', async (sessionData: any) => {
@@ -87,7 +87,7 @@ class WebSocketManager {
             const unreadCount = await this.getUnreadNotificationCount(userId)
             socket.emit('notification:unread_count', unreadCount)
 
-            console.log(`User ${username} (${userId}) authenticated with socket ${socket.id}`)
+            // console.log(`User ${username} (${userId}) authenticated with socket ${socket.id}`)
           } else {
             socket.emit('auth_error', 'Invalid session')
           }
@@ -102,7 +102,7 @@ class WebSocketManager {
         const session = this.activeSessions.get(socket.id)
         if (session) {
           socket.join(room)
-          console.log(`User ${session.username} joined room: ${room}`)
+          // console.log(`User ${session.username} joined room: ${room}`)
         }
       })
 
@@ -147,7 +147,7 @@ class WebSocketManager {
       socket.on('disconnect', () => {
         const session = this.activeSessions.get(socket.id)
         if (session) {
-          console.log(`User ${session.username} disconnected`)
+          // console.log(`User ${session.username} disconnected`)
           
           // Remove from user sockets tracking
           const userSockets = this.userSockets.get(session.userId)
@@ -163,7 +163,7 @@ class WebSocketManager {
       })
     })
 
-    console.log('WebSocket server initialized')
+    // console.log('WebSocket server initialized')
   }
 
   private async verifySocketToken(token: string) {
@@ -216,7 +216,7 @@ class WebSocketManager {
     const userSockets = this.userSockets.get(userId)
     if (userSockets && userSockets.size > 0) {
       this.io.to(`user:${userId}`).emit('notification:new', notification)
-      console.log(`Sent notification to user ${userId}:`, notification.title)
+      // console.log(`Sent notification to user ${userId}:`, notification.title)
     }
   }
 

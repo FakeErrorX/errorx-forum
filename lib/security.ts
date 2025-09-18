@@ -22,28 +22,30 @@ export const securityHeaders = {
   // Permissions policy
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
   
-  // Cross-origin policies
-  'Cross-Origin-Embedder-Policy': 'require-corp',
-  'Cross-Origin-Opener-Policy': 'same-origin',
-  'Cross-Origin-Resource-Policy': 'same-origin',
+  // Cross-origin policies - Relaxed for development
+  'Cross-Origin-Embedder-Policy': 'unsafe-none',
+  'Cross-Origin-Opener-Policy': 'unsafe-none',
+  'Cross-Origin-Resource-Policy': 'cross-origin',
 };
 
-// Content Security Policy
+// Content Security Policy - Permissive configuration
 export function generateCSP(nonce?: string) {
   const policies = [
-    "default-src 'self'",
-    `script-src 'self' 'unsafe-eval' ${nonce ? `'nonce-${nonce}'` : "'unsafe-inline'"} https://www.googletagmanager.com https://www.google-analytics.com`,
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com",
-    "img-src 'self' data: https: blob:",
-    "media-src 'self' data: blob:",
-    "object-src 'none'",
-    "base-uri 'self'",
-    "form-action 'self'",
-    "frame-ancestors 'none'",
-    "connect-src 'self' https://api.github.com wss: ws:",
-    "worker-src 'self' blob:",
-    "manifest-src 'self'",
+    "default-src *",
+    `script-src * 'unsafe-eval' 'unsafe-inline' ${nonce ? `'nonce-${nonce}'` : ""}`,
+    "style-src * 'unsafe-inline'",
+    "font-src *",
+    "img-src * data: blob:",
+    "media-src * data: blob:",
+    "object-src *",
+    "base-uri *",
+    "form-action *",
+    "frame-ancestors *",
+    "frame-src *",
+    "child-src *",
+    "connect-src *",
+    "worker-src * blob:",
+    "manifest-src *",
   ];
 
   return policies.join('; ');

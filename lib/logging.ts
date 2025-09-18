@@ -34,7 +34,7 @@ interface SecurityEvent {
 
 class Logger {
   private static instance: Logger;
-  private logLevel: LogLevel = LogLevel.INFO;
+  private logLevel: LogLevel = LogLevel.WARN; // Changed from INFO to WARN for less verbosity
   private logs: LogEntry[] = [];
   private securityEvents: SecurityEvent[] = [];
   private maxLogAge = 7 * 24 * 60 * 60 * 1000; // 7 days
