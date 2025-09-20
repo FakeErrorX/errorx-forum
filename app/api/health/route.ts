@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { performance } from '@/lib/monitoring';
-import { cacheInvalidation } from '@/lib/cache';
 import { withMonitoring } from '@/lib/security-middleware';
 
 async function handler(request: NextRequest) {
@@ -29,9 +28,6 @@ async function handler(request: NextRequest) {
           used: Math.round(stats.memory.current.heapUsed / 1024 / 1024), // MB
           total: Math.round(stats.memory.current.heapTotal / 1024 / 1024), // MB
           rss: Math.round(stats.memory.current.rss / 1024 / 1024), // MB
-        },
-        cache: {
-          hitRate: Math.round(stats.cache.hitRate * 10000) / 100, // Percentage
         },
         database: {
           averageResponseTime: Math.round(stats.database.averageDuration),

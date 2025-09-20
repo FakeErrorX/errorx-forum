@@ -129,24 +129,8 @@ export const searchSchema = z.object({
   offset: z.coerce.number().int().min(0).default(0),
 });
 
-// Authentication validation schemas
-export const signupSchema = z.object({
-  name: z.string().min(1, 'Name is required').max(100, 'Name too long'),
-  username: z.string()
-    .min(3, 'Username must be at least 3 characters')
-    .max(30, 'Username must be less than 30 characters')
-    .regex(/^[a-zA-Z0-9_-]+$/, 'Username can only contain letters, numbers, underscores, and hyphens'),
-  email: z.string().email('Invalid email format'),
-  password: z.string()
-    .min(8, 'Password must be at least 8 characters')
-    .max(100, 'Password too long')
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'Password must contain at least one lowercase letter, one uppercase letter, and one number'),
-});
-
-export const signinSchema = z.object({
-  email: z.string().email('Invalid email format'),
-  password: z.string().min(1, 'Password is required'),
-});
+// Note: Authentication is now handled exclusively through Google OAuth
+// No form validation schemas needed for auth
 
 export const forgotPasswordSchema = z.object({
   email: z.string().email('Invalid email format'),

@@ -3,23 +3,24 @@ import { validateOrigin, createSecureErrorResponse } from './lib/api-security';
 import { getToken } from 'next-auth/jwt';
 import { hasPermission, PERMISSIONS } from './lib/permissions';
 import { logger, logSecurityEvent } from '@/lib/logging';
-import rateLimiter from '@/lib/rate-limiter';
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
   try {
-    // Log request (commented out to reduce verbosity)
-    // logger.logRequest(request);
-
-    // Apply rate limiting
-    const rateLimitResult = applyRateLimit(request);
-    if (rateLimitResult) {
-      return rateLimitResult;
-    }
 
     // Only apply to API routes
     if (pathname.startsWith('/api/')) {
+      // Skip security checks for NextAuth callback routes and session routes
+      if (pathname.startsWith('/api/auth/')) {
+        // Allow NextAuth routes to proceed without any additional security checks
+        const response = NextResponse.next();
+        // Don't add strict security headers for auth routes
+        response.headers.set('X-Content-Type-Options', 'nosniff');
+        response.headers.set('X-XSS-Protection', '1; mode=block');
+        return response;
+      }
+
       // Block direct browser navigations to API endpoints (avoid exposing JSON in browser)
       const secFetchMode = request.headers.get('sec-fetch-mode');
       const secFetchDest = request.headers.get('sec-fetch-dest');
@@ -39,24 +40,27 @@ export async function middleware(request: NextRequest) {
         });
       }
 
-      // Validate the request origin
-      if (!validateOrigin(request)) {
-        logSecurityEvent({
-          type: 'suspicious_activity',
-          severity: 'high',
-          ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
-          userAgent: request.headers.get('user-agent') || undefined,
-          details: {
-            reason: 'Invalid origin',
-            path: pathname,
-            origin: request.headers.get('origin'),
-          },
-        });
+      // Skip origin validation in development
+      if (process.env.NODE_ENV === 'production') {
+        // Validate the request origin only in production
+        if (!validateOrigin(request)) {
+          logSecurityEvent({
+            type: 'suspicious_activity',
+            severity: 'high',
+            ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
+            userAgent: request.headers.get('user-agent') || undefined,
+            details: {
+              reason: 'Invalid origin',
+              path: pathname,
+              origin: request.headers.get('origin'),
+            },
+          });
 
-        return createSecureErrorResponse(
-          'Access denied. API access is restricted to authorized domains only.',
-          403
-        );
+          return createSecureErrorResponse(
+            'Access denied. API access is restricted to authorized domains only.',
+            403
+          );
+        }
       }
 
       // Check admin route access
@@ -144,110 +148,19 @@ export async function middleware(request: NextRequest) {
       },
     });
 
-    // Allow request to continue even if middleware fails
     return NextResponse.next();
   }
 }
 
-function applyRateLimit(request: NextRequest): NextResponse | null {
-  const { pathname } = request.nextUrl;
-  const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
-
-  try {
-    // Define rate limits based on endpoint type
-    let rateLimit = { windowMs: 60 * 1000, maxRequests: 100 }; // Default: 100 requests per minute
-
-    // Authentication endpoints - stricter limits
-    if (pathname.startsWith('/api/auth/') || pathname.startsWith('/signin') || pathname.startsWith('/signup')) {
-      rateLimit = { windowMs: 15 * 60 * 1000, maxRequests: 5 }; // 5 requests per 15 minutes
-    }
-    // Upload endpoints
-    else if (pathname.includes('/upload') || pathname.includes('/file')) {
-      rateLimit = { windowMs: 10 * 60 * 1000, maxRequests: 10 }; // 10 requests per 10 minutes
-    }
-    // Search endpoints
-    else if (pathname.includes('/search')) {
-      rateLimit = { windowMs: 60 * 1000, maxRequests: 30 }; // 30 requests per minute
-    }
-    // API endpoints
-    else if (pathname.startsWith('/api/')) {
-      rateLimit = { windowMs: 60 * 1000, maxRequests: 60 }; // 60 requests per minute
-    }
-    // General page requests
-    else {
-      rateLimit = { windowMs: 60 * 1000, maxRequests: 200 }; // 200 requests per minute
-    }
-
-    const result = rateLimiter.check(request, rateLimit);
-    
-    if (!result.allowed) {
-      const retryAfter = Math.ceil((result.resetTime - Date.now()) / 1000);
-      
-      // Log rate limit violations for auth and admin endpoints
-      if (pathname.startsWith('/api/auth/') || pathname.startsWith('/api/admin/')) {
-        logSecurityEvent({
-          type: 'rate_limit',
-          severity: 'medium',
-          ip,
-          userAgent: request.headers.get('user-agent') || undefined,
-          details: {
-            type: pathname.startsWith('/api/auth/') ? 'auth' : 'admin',
-            path: pathname,
-            remaining: result.remaining,
-            resetTime: result.resetTime,
-          },
-        });
-      }
-      
-      return new NextResponse('Rate limit exceeded', { 
-        status: 429,
-        headers: {
-          'Retry-After': retryAfter.toString(),
-          'X-RateLimit-Limit': result.total.toString(),
-          'X-RateLimit-Remaining': result.remaining.toString(),
-          'X-RateLimit-Reset': Math.ceil(result.resetTime / 1000).toString(),
-        },
-      });
-    }
-
-    return null; // No rate limit applied
-  } catch (error) {
-    logger.error('Rate limiting error', error instanceof Error ? error : new Error(String(error)), {
-      ip,
-      path: pathname,
-    });
-    return null; // Allow request on rate limiting error
-  }
-}
-
 function addSecurityHeaders(response: NextResponse) {
-  // Security headers - Relaxed configuration
+  // Basic security headers only - CSP removed
   response.headers.set('X-Frame-Options', 'ALLOWALL');
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('Referrer-Policy', 'unsafe-url');
   response.headers.set('X-XSS-Protection', '0');
   
-  // Content Security Policy - Permissive configuration
-  const csp = [
-    "default-src *",
-    "script-src * 'unsafe-eval' 'unsafe-inline'",
-    "style-src * 'unsafe-inline'",
-    "font-src *",
-    "img-src * data: blob:",
-    "media-src * data: blob:",
-    "connect-src *",
-    "object-src *",
-    "base-uri *",
-    "form-action *",
-    "frame-ancestors *",
-    "frame-src *",
-    "child-src *",
-    "worker-src * blob:",
-    "manifest-src *",
-  ].join('; ');
+  // Content Security Policy removed to avoid blocking external resources
   
-  response.headers.set('Content-Security-Policy', csp);
-
   // HSTS (disabled for development)
   // if (process.env.NODE_ENV === 'production') {
   //   response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');

@@ -278,52 +278,6 @@ export async function canAccessResource(
 }
 
 /**
- * Rate limiting helper
- */
-export function createRateLimiter(maxRequests: number, windowMs: number) {
-  const requests = new Map<string, number[]>()
-
-  return (identifier: string): boolean => {
-    const now = Date.now()
-    const windowStart = now - windowMs
-
-    if (!requests.has(identifier)) {
-      requests.set(identifier, [])
-    }
-
-    const userRequests = requests.get(identifier)!
-    
-    // Remove old requests outside the window
-    const validRequests = userRequests.filter(time => time > windowStart)
-    
-    if (validRequests.length >= maxRequests) {
-      return false // Rate limit exceeded
-    }
-
-    validRequests.push(now)
-    requests.set(identifier, validRequests)
-    return true
-  }
-}
-
-/**
- * Common rate limiters
- */
-export const rateLimiters = {
-  // 30 requests per minute for API calls
-  api: createRateLimiter(30, 60 * 1000),
-  
-  // 5 requests per minute for auth endpoints
-  auth: createRateLimiter(5, 60 * 1000),
-  
-  // 10 posts per hour for content creation
-  content: createRateLimiter(10, 60 * 60 * 1000),
-  
-  // 3 requests per minute for admin actions
-  admin: createRateLimiter(3, 60 * 1000)
-}
-
-/**
  * Permission-based route protection decorator
  */
 export function requirePermissions(...permissions: PermissionKey[]) {

@@ -94,14 +94,23 @@ export default function ProfilePage() {
   const [countdown, setCountdown] = useState<string>("");
 
   // Load user posts
-  const loadUserPosts = async (userId: string) => {
+  const loadUserPosts = async (userId: number) => {
+    if (!userId || isNaN(userId)) {
+      console.warn('Invalid userId provided to loadUserPosts:', userId);
+      setUserPosts([]);
+      setPostsLoading(false);
+      return;
+    }
+
     setPostsLoading(true);
     try {
-      const response = await fetch('/api/posts?limit=50&offset=0');
+      const response = await fetch(`/api/posts?authorId=${userId}&limit=50&offset=0`);
       if (response.ok) {
         const postsData = await response.json();
-        const userPostsData = postsData.filter((post: { authorId: string }) => post.authorId === userId);
-        setUserPosts(userPostsData);
+        setUserPosts(Array.isArray(postsData) ? postsData : []);
+      } else {
+        console.error('Failed to load user posts:', response.status, response.statusText);
+        setUserPosts([]);
       }
     } catch (error) {
       console.error('Error loading user posts:', error);
@@ -146,14 +155,21 @@ export default function ProfilePage() {
           setUsernameChangeDaysLeft(userData.usernameChangeDaysLeft || 0);
           setNextUsernameChangeAt(userData.nextUsernameChangeAt || null);
           
-          // Load user posts
-          await loadUserPosts(userData.id);
-        } else {
+          // Load user posts only if userId is available
+          if (userData.userId) {
+            await loadUserPosts(userData.userId);
+          } else {
+            console.warn('User data does not contain userId:', userData);
+            setUserPosts([]);
+          }
+        } else if (response.status === 401) {
           router.push("/signin");
+        } else {
+          setError("Failed to load profile data. Please refresh the page.");
         }
       } catch (error) {
         console.error('Error loading user data:', error);
-        router.push("/signin");
+        setError("Failed to load profile data. Please check your connection and try again.");
       } finally {
         setLoading(false);
       }
@@ -357,7 +373,32 @@ export default function ProfilePage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Icon icon="lucide:loader-2" className="h-8 w-8 animate-spin" />
+        <div className="flex items-center space-x-2">
+          <Icon icon="lucide:loader-2" className="h-8 w-8 animate-spin" />
+          <span>Loading profile...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle className="text-red-600">Error</CardTitle>
+            <CardDescription>{error}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Button onClick={() => window.location.reload()} className="w-full">
+              <Icon icon="lucide:refresh-cw" className="h-4 w-4 mr-2" />
+              Retry
+            </Button>
+            <Button variant="outline" onClick={() => router.push("/")} className="w-full">
+              Go Home
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -721,7 +762,7 @@ export default function ProfilePage() {
                           <h3 className="font-medium text-foreground hover:text-primary cursor-pointer">
                             {post.title}
                           </h3>
-                          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                          <p className="text-sm text-muted-foreground mt-1 truncate">
                             {post.content}
                           </p>
                           <div className="flex items-center space-x-4 mt-2 text-sm text-muted-foreground">

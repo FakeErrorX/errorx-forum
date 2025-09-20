@@ -160,19 +160,6 @@ Sign in with email and password.
 }
 ```
 
-#### `POST /api/auth/signup`
-Create a new user account.
-
-**Request Body:**
-```json
-{
-  "name": "User Name",
-  "username": "username",
-  "email": "user@example.com",
-  "password": "password123"
-}
-```
-
 ### **Post Endpoints**
 
 #### `GET /api/posts`

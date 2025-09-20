@@ -23,7 +23,7 @@ interface LogEntry {
 }
 
 interface SecurityEvent {
-  type: 'auth_failure' | 'rate_limit' | 'suspicious_activity' | 'xss_attempt' | 'sql_injection' | 'csrf_attempt';
+  type: 'auth_failure' | 'suspicious_activity' | 'xss_attempt' | 'sql_injection' | 'csrf_attempt';
   severity: 'low' | 'medium' | 'high' | 'critical';
   ip: string;
   userAgent?: string;

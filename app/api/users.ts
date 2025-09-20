@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/prisma"
-import bcrypt from "bcryptjs"
 
 // Extended Prisma user type that includes custom fields
 interface PrismaUserWithCustomFields {
@@ -14,7 +13,6 @@ interface PrismaUserWithCustomFields {
   reputation: number;
   isActive: boolean;
   preferences: Record<string, unknown>;
-  password?: string;
   lastUsernameChangeAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -27,6 +25,20 @@ export interface UserProfile {
   email: string;
   image: string | null;
   bio: string | null;
+  location: string | null;
+  website: string | null;
+  birthday: string | null;
+  timezone: string | null;
+  socialLinks: {
+    twitter?: string;
+    github?: string;
+    linkedin?: string;
+    discord?: string;
+    instagram?: string;
+    youtube?: string;
+  };
+  interests: string[];
+  skills: string[];
   postCount: number;
   reputation: number;
   isActive: boolean;
@@ -44,18 +56,16 @@ export interface CreateUserData {
   name: string;
   username: string;
   email: string;
-  password: string;
   image?: string;
   bio?: string;
 }
 
 /**
- * Create a new user profile in the database
+ * Create a new user profile in the database (Google OAuth only)
+ * This function is now primarily used for Google OAuth user creation
  */
 export async function createUser(userData: CreateUserData): Promise<UserProfile> {
   try {
-    const hashedPassword = await bcrypt.hash(userData.password, 12);
-    
     const userProfile = await prisma.user.create({
       data: {
         name: userData.name,
@@ -70,15 +80,20 @@ export async function createUser(userData: CreateUserData): Promise<UserProfile>
           theme: 'system',
           notifications: true,
           emailUpdates: true
-        },
-        // Store password in a custom field (you might want to use a separate table)
-        password: hashedPassword,
+        }
       }
     });
 
     const { id, ...userWithoutId } = userProfile;
     return {
       ...userWithoutId,
+      birthday: null,
+      location: null,
+      website: null,
+      timezone: null,
+      socialLinks: {},
+      interests: [],
+      skills: [],
       preferences: (userProfile as PrismaUserWithCustomFields).preferences as {
         theme: 'light' | 'dark' | 'system';
         notifications: boolean;
@@ -106,6 +121,10 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
         email: true,
         image: true,
         bio: true,
+        location: true,
+        website: true,
+        birthday: true,
+        timezone: true,
         postCount: true,
         reputation: true,
         isActive: true,
@@ -119,9 +138,23 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
       return null;
     }
 
+    // Get extended profile data if it exists
+    const extendedProfile = await prisma.userProfile.findUnique({
+      where: { userId: userId },
+      select: {
+        socialLinks: true,
+        interests: true,
+        skills: true,
+      }
+    });
+
     const { id, ...userWithoutId } = user;
     return {
       ...userWithoutId,
+      birthday: user.birthday ? user.birthday.toISOString() : null,
+      socialLinks: (extendedProfile?.socialLinks as any) || {},
+      interests: extendedProfile?.interests || [],
+      skills: extendedProfile?.skills || [],
       preferences: ((user as PrismaUserWithCustomFields).preferences || {}) as {
         theme: 'light' | 'dark' | 'system';
         notifications: boolean;
@@ -146,6 +179,10 @@ export async function getUserProfileByCustomId(customUserId: number): Promise<Us
         email: true,
         image: true,
         bio: true,
+        location: true,
+        website: true,
+        birthday: true,
+        timezone: true,
         postCount: true,
         reputation: true,
         isActive: true,
@@ -159,9 +196,23 @@ export async function getUserProfileByCustomId(customUserId: number): Promise<Us
       return null;
     }
 
+    // Get extended profile data if it exists
+    const extendedProfile = await prisma.userProfile.findUnique({
+      where: { userId: user.id },
+      select: {
+        socialLinks: true,
+        interests: true,
+        skills: true,
+      }
+    });
+
     const { id, ...userWithoutId } = user;
     return {
       ...userWithoutId,
+      birthday: user.birthday ? user.birthday.toISOString() : null,
+      socialLinks: (extendedProfile?.socialLinks as any) || {},
+      interests: extendedProfile?.interests || [],
+      skills: extendedProfile?.skills || [],
       preferences: ((user as PrismaUserWithCustomFields).preferences || {}) as {
         theme: 'light' | 'dark' | 'system';
         notifications: boolean;
@@ -189,6 +240,10 @@ export async function getUserByEmail(email: string): Promise<UserProfile | null>
         email: true,
         image: true,
         bio: true,
+        location: true,
+        website: true,
+        birthday: true,
+        timezone: true,
         postCount: true,
         reputation: true,
         isActive: true,
@@ -202,9 +257,23 @@ export async function getUserByEmail(email: string): Promise<UserProfile | null>
       return null;
     }
 
+    // Get extended profile data if it exists
+    const extendedProfile = await prisma.userProfile.findUnique({
+      where: { userId: user.id },
+      select: {
+        socialLinks: true,
+        interests: true,
+        skills: true,
+      }
+    });
+
     const { id, ...userWithoutId } = user;
     return {
       ...userWithoutId,
+      birthday: user.birthday ? user.birthday.toISOString() : null,
+      socialLinks: (extendedProfile?.socialLinks as any) || {},
+      interests: extendedProfile?.interests || [],
+      skills: extendedProfile?.skills || [],
       preferences: ((user as PrismaUserWithCustomFields).preferences || {}) as {
         theme: 'light' | 'dark' | 'system';
         notifications: boolean;
@@ -225,9 +294,18 @@ export async function updateUserProfile(
   updates: Partial<Omit<UserProfile, 'id' | 'createdAt' | 'updatedAt'>>
 ): Promise<UserProfile> {
   try {
+    // Separate updates for User model and UserProfile model
+    const { socialLinks, interests, skills, birthday, ...userUpdates } = updates;
+    
+    // Update User model
+    const userUpdateData: any = { ...userUpdates };
+    if (birthday !== undefined) {
+      userUpdateData.birthday = birthday ? new Date(birthday) : null;
+    }
+    
     const result = await prisma.user.update({
       where: { id: userId },
-      data: updates,
+      data: userUpdateData,
       select: {
         id: true,
         userId: true,
@@ -236,6 +314,10 @@ export async function updateUserProfile(
         email: true,
         image: true,
         bio: true,
+        location: true,
+        website: true,
+        birthday: true,
+        timezone: true,
         postCount: true,
         reputation: true,
         isActive: true,
@@ -245,9 +327,40 @@ export async function updateUserProfile(
       }
     });
 
+    // Update or create UserProfile if extended fields are provided
+    if (socialLinks !== undefined || interests !== undefined || skills !== undefined) {
+      const profileData: any = {};
+      if (socialLinks !== undefined) profileData.socialLinks = socialLinks;
+      if (interests !== undefined) profileData.interests = interests;
+      if (skills !== undefined) profileData.skills = skills;
+
+      await prisma.userProfile.upsert({
+        where: { userId: userId },
+        update: profileData,
+        create: {
+          userId: userId,
+          ...profileData,
+        }
+      });
+    }
+
+    // Get updated extended profile data
+    const extendedProfile = await prisma.userProfile.findUnique({
+      where: { userId: userId },
+      select: {
+        socialLinks: true,
+        interests: true,
+        skills: true,
+      }
+    });
+
     const { id, ...userWithoutId } = result;
     return {
       ...userWithoutId,
+      birthday: result.birthday ? result.birthday.toISOString() : null,
+      socialLinks: (extendedProfile?.socialLinks as any) || {},
+      interests: extendedProfile?.interests || [],
+      skills: extendedProfile?.skills || [],
       preferences: ((result as PrismaUserWithCustomFields).preferences || {}) as {
         theme: 'light' | 'dark' | 'system';
         notifications: boolean;
@@ -334,72 +447,5 @@ export async function updateUserReputation(userId: string, reputationChange: num
   } catch (error) {
     console.error('Error updating user reputation:', error);
     throw new Error('Failed to update reputation');
-  }
-}
-
-/**
- * Verify user password
- */
-export async function verifyPassword(email: string, password: string): Promise<UserProfile | null> {
-  try {
-    const user = await prisma.user.findUnique({
-      where: { email },
-      select: {
-        id: true,
-        userId: true,
-        name: true,
-        username: true,
-        email: true,
-        image: true,
-        bio: true,
-        postCount: true,
-        reputation: true,
-        isActive: true,
-        preferences: true,
-        createdAt: true,
-        updatedAt: true,
-        password: true
-      }
-    });
-
-    if (!user || !(user as PrismaUserWithCustomFields).password) {
-      return null;
-    }
-
-    const isPasswordValid = await bcrypt.compare(password, (user as PrismaUserWithCustomFields).password!);
-    
-    if (!isPasswordValid) {
-      return null;
-    }
-
-    const { id, password: _, ...userWithoutId } = user;
-    return {
-      ...userWithoutId,
-      preferences: ((user as PrismaUserWithCustomFields).preferences || {}) as {
-        theme: 'light' | 'dark' | 'system';
-        notifications: boolean;
-        emailUpdates: boolean;
-      }
-    } as UserProfile;
-  } catch (error) {
-    console.error('Error verifying password:', error);
-    return null;
-  }
-}
-
-/**
- * Update user password
- */
-export async function updatePassword(userId: string, newPassword: string): Promise<void> {
-  try {
-    const hashedPassword = await bcrypt.hash(newPassword, 12);
-    
-    await prisma.user.update({
-      where: { id: userId },
-      data: { password: hashedPassword }
-    });
-  } catch (error) {
-    console.error('Error updating password:', error);
-    throw new Error('Failed to update password');
   }
 }

@@ -33,19 +33,10 @@ interface DatabaseMetrics {
   error?: string;
 }
 
-interface CacheMetrics {
-  operation: string;
-  key: string;
-  hit: boolean;
-  duration: number;
-  timestamp: number;
-}
-
 class PerformanceMonitor {
   private metrics: PerformanceMetric[] = [];
   private requestMetrics: Map<string, RequestMetrics> = new Map();
   private dbMetrics: DatabaseMetrics[] = [];
-  private cacheMetrics: CacheMetrics[] = [];
   private maxMetricsAge = 24 * 60 * 60 * 1000; // 24 hours
   private cleanupInterval: NodeJS.Timeout;
 
@@ -61,7 +52,6 @@ class PerformanceMonitor {
     
     this.metrics = this.metrics.filter(m => m.timestamp > cutoff);
     this.dbMetrics = this.dbMetrics.filter(m => m.timestamp > cutoff);
-    this.cacheMetrics = this.cacheMetrics.filter(m => m.timestamp > cutoff);
     
     // Clean up completed request metrics
     for (const [id, metric] of this.requestMetrics.entries()) {
@@ -161,22 +151,6 @@ class PerformanceMonitor {
     });
   }
 
-  // Record cache operation metrics
-  recordCacheMetric(operation: string, key: string, hit: boolean, duration: number): void {
-    this.cacheMetrics.push({
-      operation,
-      key,
-      hit,
-      duration,
-      timestamp: Date.now(),
-    });
-
-    this.recordMetric('cache_operation_duration', duration, {
-      operation,
-      hit: hit.toString(),
-    });
-  }
-
   // Get performance statistics
   getStats(timeRange?: number): {
     requests: {
@@ -192,11 +166,6 @@ class PerformanceMonitor {
       errorRate: number;
       slowestQueries: DatabaseMetrics[];
     };
-    cache: {
-      operations: number;
-      hitRate: number;
-      averageDuration: number;
-    };
     memory: {
       current: NodeJS.MemoryUsage;
       peak: number;
@@ -210,7 +179,6 @@ class PerformanceMonitor {
       .filter(r => r.endTime && r.endTime > cutoff);
     
     const recentDbMetrics = this.dbMetrics.filter(m => m.timestamp > cutoff);
-    const recentCacheMetrics = this.cacheMetrics.filter(m => m.timestamp > cutoff);
     const recentMetrics = this.metrics.filter(m => m.timestamp > cutoff);
 
     // Request statistics
@@ -248,14 +216,6 @@ class PerformanceMonitor {
       .sort((a, b) => b.duration - a.duration)
       .slice(0, 10);
 
-    // Cache statistics
-    const totalCacheOps = recentCacheMetrics.length;
-    const cacheHits = recentCacheMetrics.filter(m => m.hit);
-    const cacheHitRate = totalCacheOps > 0 ? cacheHits.length / totalCacheOps : 0;
-    const averageCacheDuration = totalCacheOps > 0
-      ? recentCacheMetrics.reduce((sum, m) => sum + m.duration, 0) / totalCacheOps
-      : 0;
-
     // Memory statistics
     const currentMemory = process.memoryUsage();
     const memoryMetrics = recentMetrics.filter(m => m.name === 'memory_usage');
@@ -276,11 +236,6 @@ class PerformanceMonitor {
         averageDuration: averageDbDuration,
         errorRate: dbErrorRate,
         slowestQueries,
-      },
-      cache: {
-        operations: totalCacheOps,
-        hitRate: cacheHitRate,
-        averageDuration: averageCacheDuration,
       },
       memory: {
         current: currentMemory,
@@ -350,16 +305,6 @@ class PerformanceMonitor {
       threshold: 100,
     });
 
-    // Check cache hit rate
-    const cacheHitRate = stats.cache.hitRate;
-    checks.push({
-      name: 'cache_hit_rate',
-      status: cacheHitRate > 0.8 ? 'pass' : cacheHitRate > 0.6 ? 'warn' : 'fail',
-      message: `Cache hit rate: ${(cacheHitRate * 100).toFixed(2)}%`,
-      value: cacheHitRate,
-      threshold: 0.8,
-    });
-
     const failedChecks = checks.filter(c => c.status === 'fail').length;
     const warningChecks = checks.filter(c => c.status === 'warn').length;
 
@@ -395,10 +340,6 @@ class PerformanceMonitor {
       `# TYPE http_request_error_rate gauge`,
       `http_request_error_rate ${stats.requests.errorRate}`,
       ``,
-      `# HELP cache_hit_rate Cache hit rate`,
-      `# TYPE cache_hit_rate gauge`,
-      `cache_hit_rate ${stats.cache.hitRate}`,
-      ``,
       `# HELP memory_usage_bytes Memory usage in bytes`,
       `# TYPE memory_usage_bytes gauge`,
       `memory_usage_bytes ${stats.memory.current.heapUsed}`,
@@ -415,7 +356,6 @@ class PerformanceMonitor {
     this.metrics = [];
     this.requestMetrics.clear();
     this.dbMetrics = [];
-    this.cacheMetrics = [];
   }
 }
 
@@ -470,27 +410,6 @@ export function monitorDatabaseQuery<T>(
     .catch(error => {
       const duration = Date.now() - startTime;
       monitor.recordDatabaseMetric(queryType, table, duration, false, error.message);
-      throw error;
-    });
-}
-
-// Cache operation monitoring wrapper
-export function monitorCacheOperation<T>(
-  operation: string,
-  key: string,
-  cacheOperation: () => Promise<{ result: T; hit: boolean }>
-): Promise<T> {
-  const startTime = Date.now();
-  
-  return cacheOperation()
-    .then(({ result, hit }) => {
-      const duration = Date.now() - startTime;
-      monitor.recordCacheMetric(operation, key, hit, duration);
-      return result;
-    })
-    .catch(error => {
-      const duration = Date.now() - startTime;
-      monitor.recordCacheMetric(operation, key, false, duration);
       throw error;
     });
 }

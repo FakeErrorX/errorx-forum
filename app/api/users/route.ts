@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { getUserProfile, getUserProfileByCustomId, updateUserProfile, createUser } from "../users";
-import { sendWelcomeEmail } from "@/lib/email";
+import { getUserProfile, getUserProfileByCustomId, updateUserProfile } from "../users";
 import { prisma } from "@/lib/prisma";
 import { updateUserSchema, paginationSchema } from "@/lib/validations";
 import { validateRequestBody, validateQueryParams, handleValidationError } from "@/lib/api-validation";
@@ -17,18 +16,22 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const customUserId = parseInt((session.user as { id: string }).id);
-    const user = await getUserProfileByCustomId(customUserId);
+    // session.user.id is the internal CUID, not the custom userId
+    const internalUserId = (session.user as { id: string }).id;
+    console.log('GET /api/users - internalUserId:', internalUserId);
+    
+    const user = await getUserProfile(internalUserId);
     if (!user) {
       return NextResponse.json(
         { error: "User not found" },
         { status: 404 }
       );
     }
+    console.log('GET /api/users - found user:', { userId: user.userId, name: user.name, email: user.email });
 
     // Calculate username change cooldown
     const rawUserAny = await prisma.user.findUnique({
-      where: { userId: customUserId }
+      where: { id: internalUserId }
     });
 
     let canChangeUsername = true;
@@ -74,26 +77,14 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const customUserId = parseInt((session.user as { id: string }).id);
+    // session.user.id is the internal CUID, not the custom userId
+    const internalUserId = (session.user as { id: string }).id;
     const body = await request.json();
-    const { name, username, bio, image, preferences } = body;
+    const { name, username, bio, image, preferences, location, website, birthday, timezone, socialLinks, interests, skills } = body;
 
-    // First get the user to find their internal ID
-    const user = await getUserProfileByCustomId(customUserId);
+    // Get the current user data
+    const user = await getUserProfile(internalUserId);
     if (!user) {
-      return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
-      );
-    }
-
-    // Find the internal ID by searching for the user with this custom userId
-    const userWithInternalId = await prisma.user.findUnique({
-      where: { userId: customUserId },
-      select: { id: true }
-    });
-
-    if (!userWithInternalId) {
       return NextResponse.json(
         { error: "User not found" },
         { status: 404 }
@@ -104,12 +95,13 @@ export async function PUT(request: NextRequest) {
     if (typeof username === "string" && username !== user.username) {
       const now = new Date();
       const lastChangeUser = await prisma.user.findUnique({
-        where: { id: userWithInternalId.id }
+        where: { id: internalUserId },
+        select: { lastUsernameChangeAt: true }
       });
 
       const lastChangeAt = (lastChangeUser as unknown as { lastUsernameChangeAt?: Date | null })?.lastUsernameChangeAt;
-      if (lastChangeAt) {
-        const millisSince = now.getTime() - new Date(lastChangeAt).getTime();
+      if (lastChangeAt instanceof Date) {
+        const millisSince = now.getTime() - lastChangeAt.getTime();
         const daysSince = millisSince / (1000 * 60 * 60 * 24);
         if (daysSince < 30) {
           const daysLeft = Math.ceil(30 - daysSince);
@@ -119,15 +111,35 @@ export async function PUT(request: NextRequest) {
           );
         }
       }
+
+      // Check if the new username is already taken
+      const existingUser = await prisma.user.findUnique({
+        where: { username: username }
+      });
+      
+      if (existingUser && existingUser.id !== internalUserId) {
+        return NextResponse.json(
+          { error: "Username is already taken. Please choose a different one." },
+          { status: 400 }
+        );
+      }
     }
 
-    const updatedUser = await updateUserProfile(userWithInternalId.id, {
+    const isUsernameChanging = typeof username === "string" && username !== user.username;
+    const updatedUser = await updateUserProfile(internalUserId, {
       name,
       username,
       bio,
       image,
       preferences,
-      ...(typeof username === "string" && username !== user.username
+      location,
+      website,
+      birthday,
+      timezone,
+      socialLinks,
+      interests,
+      skills,
+      ...(isUsernameChanging
         ? ({ lastUsernameChangeAt: new Date() } as unknown as Record<string, unknown>)
         : {})
     });
@@ -151,67 +163,8 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { name, username, email, password } = body;
-
-    if (!name || !username || !email || !password) {
-      return NextResponse.json(
-        { error: "Name, username, email, and password are required" },
-        { status: 400 }
-      );
-    }
-
-    // Check if username already exists
-    const { usernameExists } = await import("../users");
-    if (await usernameExists(username)) {
-      return NextResponse.json(
-        { error: "Username already exists" },
-        { status: 400 }
-      );
-    }
-
-    // Check if email already exists
-    const { emailExists } = await import("../users");
-    if (await emailExists(email)) {
-      return NextResponse.json(
-        { error: "Email already exists" },
-        { status: 400 }
-      );
-    }
-
-    const user = await createUser({
-      name,
-      username,
-      email,
-      password,
-    });
-
-    // Send welcome email (don't wait for it to complete)
-    sendWelcomeEmail(email, name).catch(error => {
-      console.error('Failed to send welcome email:', error);
-    });
-
-    // Award welcome trophies to new user (get internal ID from database)
-    try {
-      const { onUserRegistered } = await import('@/lib/trophy-service')
-      // Get the internal ID by looking up the user by email
-      const userWithId = await prisma.user.findUnique({ where: { email } })
-      if (userWithId) {
-        // @ts-ignore - Temporary bypass for build
-        await onUserRegistered(userWithId.id)
-      }
-    } catch (error) {
-      console.error('Failed to award welcome trophies:', error);
-    }
-
-    // User data already has internal ID removed and custom userId exposed
-    return NextResponse.json(user, { status: 201 });
-  } catch (error) {
-    console.error("Error creating user:", error);
-    return NextResponse.json(
-      { error: "Failed to create user" },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json(
+    { error: "User registration is only available through Google OAuth. Please use the 'Sign in with Google' option." },
+    { status: 403 }
+  );
 }

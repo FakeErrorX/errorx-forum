@@ -8,13 +8,13 @@ module.exports = {
   siteUrl: process.env.SITE_URL,
   generateRobotsTxt: true,
   generateIndexSitemap: false,
-  exclude: ['/admin/*', '/api/*', '/settings', '/signin', '/signup', '/reset-password'],
+  exclude: ['/admin/*', '/api/*', '/settings', '/signin', '/reset-password'],
   robotsTxtOptions: {
     policies: [
       {
         userAgent: '*',
         allow: '/',
-        disallow: ['/admin/', '/api/', '/settings', '/signin', '/signup', '/reset-password'],
+        disallow: ['/admin/', '/api/', '/settings', '/signin', '/reset-password'],
       },
     ],
     additionalSitemaps: [

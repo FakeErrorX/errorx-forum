@@ -53,39 +53,6 @@ Sign in with email and password.
 
 ---
 
-### **POST /api/auth/signup**
-
-Create a new user account.
-
-**Request Body:**
-```json
-{
-  "name": "User Name",
-  "username": "username",
-  "email": "user@example.com",
-  "password": "password123"
-}
-```
-
-**Response:**
-```json
-{
-  "user": {
-    "id": "user_id",
-    "name": "User Name",
-    "username": "username",
-    "email": "user@example.com"
-  }
-}
-```
-
-**Error Responses:**
-- `400` - Validation error
-- `409` - User already exists
-- `500` - Server error
-
----
-
 ### **POST /api/auth/signout**
 
 Sign out the current user.

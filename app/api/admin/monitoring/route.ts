@@ -3,7 +3,6 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { logger, LogLevel } from '@/lib/logging';
 import { dbOptimizer, monitorConnectionPool, analyzeQueryPerformance } from '@/lib/database-optimization';
-import cache, { cacheInvalidation } from '@/lib/cache';
 import monitor from '@/lib/monitoring';
 
 export async function GET(request: NextRequest) {
@@ -57,13 +56,11 @@ async function handleOverview() {
       logStats,
       performanceStats,
       databaseStats,
-      cacheStats,
       connectionPool,
     ] = await Promise.all([
       logger.getStats(),
       monitor.getStats(),
       dbOptimizer.getDatabaseStats(),
-      cache.getStats(),
       monitorConnectionPool(),
     ]);
 
@@ -71,7 +68,6 @@ async function handleOverview() {
       logs: logStats,
       performance: performanceStats,
       database: databaseStats,
-      cache: cacheStats,
       connectionPool,
       timestamp: new Date().toISOString(),
     });
@@ -164,10 +160,9 @@ async function handleDatabase() {
 }
 
 async function handleCache() {
-  const cacheStats = cache.getStats();
-  
   return NextResponse.json({
-    stats: cacheStats,
+    message: 'Cache functionality has been removed',
+    stats: { entries: 0, hitRate: 0, size: 0 },
     timestamp: new Date().toISOString(),
   });
 }
@@ -208,12 +203,12 @@ export async function POST(request: NextRequest) {
 
 async function handleClearCache(params: any) {
   try {
-    cache.clear();
-    logger.info('Cache cleared by admin', { action: 'clearCache', params });
+    // Cache functionality removed - no-op
+    logger.info('Cache clear requested (functionality removed)', { action: 'clearCache', params });
     
     return NextResponse.json({ 
       success: true, 
-      message: 'Cache cleared successfully' 
+      message: 'Cache functionality has been removed'
     });
   } catch (error) {
     throw new Error(`Failed to clear cache: ${error}`);
@@ -224,17 +219,15 @@ async function handleInvalidateCache(params: { tags?: string[] }) {
   try {
     const { tags = [] } = params;
     
-    if (tags.length > 0) {
-      cacheInvalidation.invalidateByTags(tags);
-      logger.info('Cache invalidated by admin', { action: 'invalidateCache', tags });
-    } else {
-      cacheInvalidation.clearAll();
-      logger.info('All cache invalidated by admin', { action: 'invalidateCache' });
-    }
+    // Cache functionality removed - no-op
+    logger.info('Cache invalidation requested (functionality removed)', { 
+      action: 'invalidateCache', 
+      tags: tags.length > 0 ? tags : 'all' 
+    });
     
     return NextResponse.json({ 
       success: true, 
-      message: `Cache invalidated: ${tags.length > 0 ? tags.join(', ') : 'all'}` 
+      message: 'Cache functionality has been removed' 
     });
   } catch (error) {
     throw new Error(`Failed to invalidate cache: ${error}`);

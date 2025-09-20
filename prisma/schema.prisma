@@ -47,7 +47,6 @@ model User {
   email         String    @unique
   emailVerified DateTime?
   image         String?
-  password      String?   // For credentials provider
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   lastUsernameChangeAt DateTime?
@@ -87,11 +86,10 @@ model User {
   
   // Privacy & Security
   privacySettings Json?   @default("{\"showOnline\": true, \"receiveMessages\": true, \"showEmail\": false}")
-  emailNotifications Json? @default("{\"replies\": true, \"mentions\": true, \"conversations\": true}")
-  notificationPreferences Json? @default("{\"mentions\":{\"email\":true,\"push\":true,\"realtime\":true},\"replies\":{\"email\":true,\"push\":true,\"realtime\":true},\"follows\":{\"email\":false,\"push\":true,\"realtime\":true},\"likes\":{\"email\":false,\"push\":false,\"realtime\":true},\"messages\":{\"email\":true,\"push\":true,\"realtime\":true},\"system\":{\"email\":true,\"push\":true,\"realtime\":true},\"emailDigest\":\"daily\"}")
+  notificationPreferences Json? @default("{\"mentions\":{\"realtime\":true},\"replies\":{\"realtime\":true},\"follows\":{\"realtime\":true},\"likes\":{\"realtime\":true},\"messages\":{\"realtime\":true},\"system\":{\"realtime\":true}}")
   
   // Role and permissions
-  roleId        String?   @default("member") // Default role
+  roleId        String?   // Default role will be set by application logic
   role          Role?     @relation(fields: [roleId], references: [id])
   secondaryRoles UserSecondaryRole[]
 
@@ -102,7 +100,6 @@ model User {
   featuredPosts Post[]    @relation("FeaturedByUser")
   comments      Comment[]
   likes         Like[]
-  passwordResets PasswordReset[]
   
   // New relations
   watches       Watch[]
@@ -173,9 +170,6 @@ model User {
   userEngagement        UserEngagement[] @relation("UserEngagementUser")
   experimentsCreated    Experiment[] @relation("ExperimentCreator")
   experimentParticipation UserExperiment[] @relation("UserExperimentUser")
-
-  // PWA push notifications
-  pushSubscription      PushSubscription? @relation("UserPushSubscription")
 
   // Content management relations
   scheduledPosts        ScheduledPost[] @relation("ScheduledPostAuthor")
@@ -509,20 +503,6 @@ model Notification {
   @@index([userId, isRead])
   @@index([createdAt])
   @@index([type])
-}
-
-model PasswordReset {
-  id        String   @id @default(cuid())
-  token     String   @unique
-  userId    String
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([token])
-  @@index([expiresAt])
 }
 
 // Conversations (private messages)
@@ -1610,19 +1590,7 @@ model UserExperiment {
   @@index([converted])
 }
 
-// Push notification subscriptions for PWA
-model PushSubscription {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  endpoint  String
-  keys      Json     // Contains p256dh and auth keys
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 
-  user      User @relation("UserPushSubscription", fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-}
 
 // Content scheduling and publishing
 model ScheduledPost {
@@ -2057,8 +2025,6 @@ model UserSettings {
   theme         String   @default("system")
   language      String   @default("en")
   timezone      String   @default("UTC")
-  emailNotifications Json? @default("{\"replies\":true,\"mentions\":true,\"messages\":true,\"digest\":\"weekly\"}")
-  pushNotifications Json?  @default("{\"replies\":true,\"mentions\":true,\"messages\":true}")
   privacySettings Json?   @default("{\"showEmail\":false,\"showPhone\":false,\"showOnline\":true}")
   contentSettings Json?   @default("{\"autoplayVideos\":true,\"showImages\":true,\"nsfwContent\":false}")
   moderationSettings Json? @default("{\"hideWarned\":false,\"hideDownvoted\":false}")

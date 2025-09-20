@@ -8,16 +8,6 @@ import {
   RequestSecurity 
 } from './security';
 import { 
-  createRateLimitMiddleware, 
-  rateLimitConfigs, 
-  shouldRateLimit 
-} from './rate-limiter';
-import { 
-  createCacheMiddleware, 
-  cacheConfigs, 
-  addCacheHeaders 
-} from './cache';
-import { 
   createMonitoringMiddleware, 
   performance 
 } from './monitoring';
@@ -29,15 +19,6 @@ interface MiddlewareConfig {
     requireCSRF?: boolean;
     detectSuspiciousActivity?: boolean;
     addSecurityHeaders?: boolean;
-  };
-  rateLimit?: {
-    enabled: boolean;
-    config?: keyof typeof rateLimitConfigs | typeof rateLimitConfigs[keyof typeof rateLimitConfigs];
-    endpoint?: string;
-  };
-  cache?: {
-    enabled: boolean;
-    config?: keyof typeof cacheConfigs | typeof cacheConfigs[keyof typeof cacheConfigs];
   };
   monitoring?: {
     enabled: boolean;
@@ -63,16 +44,6 @@ class SecurityPerformanceMiddleware {
         detectSuspiciousActivity: true,
         addSecurityHeaders: true,
         ...config.security,
-      },
-      rateLimit: {
-        enabled: true,
-        config: 'general',
-        ...config.rateLimit,
-      },
-      cache: {
-        enabled: true,
-        config: 'api',
-        ...config.cache,
       },
       monitoring: {
         enabled: true,
@@ -232,36 +203,8 @@ class SecurityPerformanceMiddleware {
           return this.addSecurityHeaders(inputValidation);
         }
 
-        // Rate limiting
-        if (this.config.rateLimit?.enabled && shouldRateLimit(request)) {
-          const rateLimitConfig = typeof this.config.rateLimit.config === 'string'
-            ? rateLimitConfigs[this.config.rateLimit.config]
-            : this.config.rateLimit.config || rateLimitConfigs.general;
-
-          const rateLimitMiddleware = createRateLimitMiddleware(
-            rateLimitConfig,
-            this.config.rateLimit.endpoint
-          );
-
-          const rateLimitResult = rateLimitMiddleware(request);
-          if (rateLimitResult) {
-            return this.addSecurityHeaders(rateLimitResult);
-          }
-        }
-
-        // Cache handling (for GET requests)
-        let response: NextResponse;
-        
-        if (request.method === 'GET' && this.config.cache?.enabled) {
-          const cacheConfig = typeof this.config.cache.config === 'string'
-            ? cacheConfigs[this.config.cache.config]
-            : this.config.cache.config || cacheConfigs.api;
-
-          const cacheMiddleware = createCacheMiddleware(cacheConfig);
-          response = await cacheMiddleware(request, handler);
-        } else {
-          response = await handler(request);
-        }
+        // Execute handler directly (no caching)
+        let response = await handler(request);
 
         // Add CORS headers to response
         this.handleCORS(request, response);
@@ -313,19 +256,15 @@ class SecurityPerformanceMiddleware {
 
 // Predefined middleware configurations
 export const middlewareConfigs = {
-  // API endpoints - full security with rate limiting
+  // API endpoints - security only
   api: {
     security: { enabled: true, detectSuspiciousActivity: true },
-    rateLimit: { enabled: true, config: 'api' as const },
-    cache: { enabled: true, config: 'api' as const },
     monitoring: { enabled: true },
   } as MiddlewareConfig,
 
-  // Authentication endpoints - strict rate limiting
+  // Authentication endpoints - strict security
   auth: {
     security: { enabled: true, requireCSRF: true },
-    rateLimit: { enabled: true, config: 'auth' as const },
-    cache: { enabled: false },
     monitoring: { enabled: true },
   } as MiddlewareConfig,
 
@@ -336,40 +275,30 @@ export const middlewareConfigs = {
       detectSuspiciousActivity: true,
       requireCSRF: true,
     },
-    rateLimit: { enabled: true, config: 'admin' as const },
-    cache: { enabled: true, config: 'userSpecific' as const },
     monitoring: { enabled: true },
   } as MiddlewareConfig,
 
-  // Upload endpoints - strict limits
+  // Upload endpoints
   upload: {
     security: { enabled: true },
-    rateLimit: { enabled: true, config: 'upload' as const },
-    cache: { enabled: false },
     monitoring: { enabled: true },
   } as MiddlewareConfig,
 
-  // Search endpoints - cache-heavy
+  // Search endpoints
   search: {
     security: { enabled: true },
-    rateLimit: { enabled: true, config: 'search' as const },
-    cache: { enabled: true, config: 'search' as const },
     monitoring: { enabled: true },
   } as MiddlewareConfig,
 
-  // Static content - minimal security, heavy caching
+  // Static content - minimal security
   static: {
     security: { enabled: true, addSecurityHeaders: false },
-    rateLimit: { enabled: false },
-    cache: { enabled: true, config: 'static' as const },
     monitoring: { enabled: false },
   } as MiddlewareConfig,
 
   // Public pages - basic security
   public: {
     security: { enabled: true, detectSuspiciousActivity: false },
-    rateLimit: { enabled: true, config: 'general' as const },
-    cache: { enabled: true, config: 'content' as const },
     monitoring: { enabled: true },
   } as MiddlewareConfig,
 };
@@ -377,34 +306,6 @@ export const middlewareConfigs = {
 // Utility functions for common use cases
 export function withSecurity(handler: (request: NextRequest) => Promise<NextResponse>) {
   const middleware = new SecurityPerformanceMiddleware(middlewareConfigs.api);
-  const middlewareFunction = middleware.createMiddleware();
-  return (request: NextRequest) => middlewareFunction(request, handler);
-}
-
-export function withRateLimit(
-  handler: (request: NextRequest) => Promise<NextResponse>,
-  config: keyof typeof rateLimitConfigs = 'general'
-) {
-  const middleware = new SecurityPerformanceMiddleware({
-    rateLimit: { enabled: true, config },
-    security: { enabled: false },
-    cache: { enabled: false },
-    monitoring: { enabled: false },
-  });
-  const middlewareFunction = middleware.createMiddleware();
-  return (request: NextRequest) => middlewareFunction(request, handler);
-}
-
-export function withCache(
-  handler: (request: NextRequest) => Promise<NextResponse>,
-  config: keyof typeof cacheConfigs = 'api'
-) {
-  const middleware = new SecurityPerformanceMiddleware({
-    cache: { enabled: true, config },
-    security: { enabled: false },
-    rateLimit: { enabled: false },
-    monitoring: { enabled: false },
-  });
   const middlewareFunction = middleware.createMiddleware();
   return (request: NextRequest) => middlewareFunction(request, handler);
 }

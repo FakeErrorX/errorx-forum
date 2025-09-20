@@ -14,8 +14,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const userId = (session.user as { id: string }).id;
-
+    const customUserId = parseInt((session.user as { id: string }).id);
     const body = await request.json();
     const { theme, notifications, emailUpdates } = body;
 
@@ -27,13 +26,20 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Get current preferences
-    const currentUser = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { preferences: true }
+    // Find user by custom userId
+    const userWithInternalId = await prisma.user.findUnique({
+      where: { userId: customUserId },
+      select: { id: true, preferences: true }
     });
 
-    const currentPreferences = (currentUser?.preferences as Record<string, unknown>) || {
+    if (!userWithInternalId) {
+      return NextResponse.json(
+        { error: "User not found" },
+        { status: 404 }
+      );
+    }
+
+    const currentPreferences = (userWithInternalId.preferences as Record<string, unknown>) || {
       theme: 'system',
       notifications: true,
       emailUpdates: true
@@ -51,10 +57,10 @@ export async function PUT(request: NextRequest) {
 
     // Update user preferences
     const updatedUser = await prisma.user.update({
-      where: { id: userId },
+      where: { id: userWithInternalId.id },
       data: updateData,
       select: {
-        id: true,
+        userId: true,
         name: true,
         username: true,
         email: true,
@@ -69,7 +75,9 @@ export async function PUT(request: NextRequest) {
       }
     });
 
-    return NextResponse.json(updatedUser);
+    // Remove internal id and expose custom userId
+    const { ...userWithoutId } = updatedUser;
+    return NextResponse.json(userWithoutId);
   } catch (error) {
     console.error("Error updating preferences:", error);
     return NextResponse.json(

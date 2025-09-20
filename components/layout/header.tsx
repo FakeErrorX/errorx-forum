@@ -75,6 +75,14 @@ export default function Header({ searchQuery, setSearchQuery, isSearching, curre
               <Icon icon="lucide:users" className="h-4 w-4 mr-2" />
               Members
             </Button>
+            <Button variant="ghost" onClick={() => router.push("/categories")} className="hidden sm:flex">
+              <Icon icon="lucide:folder" className="h-4 w-4 mr-2" />
+              Categories
+            </Button>
+            <Button variant="ghost" onClick={() => router.push("/trending")} className="hidden sm:flex">
+              <Icon icon="lucide:trending-up" className="h-4 w-4 mr-2" />
+              Trending
+            </Button>
             <AdminOnly>
               <Button variant="ghost" onClick={() => router.push("/admin")} className="hidden sm:flex">
                 <Icon icon="lucide:shield" className="h-4 w-4 mr-2" />
@@ -103,7 +111,7 @@ export default function Header({ searchQuery, setSearchQuery, isSearching, curre
             {session?.user ? (
               <div className="flex items-center space-x-4">
                 <ModeToggle />
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="sm" onClick={() => router.push("/notifications")}>
                   <Icon icon="lucide:bell" className="h-4 w-4" />
                 </Button>
                 <DropdownMenu>
@@ -153,11 +161,9 @@ export default function Header({ searchQuery, setSearchQuery, isSearching, curre
             ) : (
               <div className="flex items-center space-x-2">
                 <ModeToggle />
-                <Button variant="ghost" onClick={() => router.push("/signin")}>
-                  Sign In
-                </Button>
-                <Button onClick={() => router.push("/signup")}>
-                  Sign Up
+                <Button onClick={() => router.push("/signin")} className="flex items-center gap-2">
+                  <Icon icon="logos:google-icon" className="h-4 w-4" />
+                  Sign In with Google
                 </Button>
               </div>
             )}
@@ -205,6 +211,28 @@ export default function Header({ searchQuery, setSearchQuery, isSearching, curre
                       <Icon icon="lucide:users" className="h-4 w-4 mr-2" />
                       Members
                     </Button>
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => {
+                        router.push("/categories");
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className="w-full justify-start"
+                    >
+                      <Icon icon="lucide:folder" className="h-4 w-4 mr-2" />
+                      Categories
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => {
+                        router.push("/trending");
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className="w-full justify-start"
+                    >
+                      <Icon icon="lucide:trending-up" className="h-4 w-4 mr-2" />
+                      Trending
+                    </Button>
                     <AdminOnly>
                       <Button 
                         variant="ghost" 
@@ -234,7 +262,7 @@ export default function Header({ searchQuery, setSearchQuery, isSearching, curre
                             {currentUser?.username ? `@${currentUser.username}` : session.user.email}
                           </p>
                         </div>
-                        <Button variant="ghost" size="sm">
+                        <Button variant="ghost" size="sm" onClick={() => router.push("/notifications")}>
                           <Icon icon="lucide:bell" className="h-4 w-4" />
                         </Button>
                       </div>
@@ -277,23 +305,14 @@ export default function Header({ searchQuery, setSearchQuery, isSearching, curre
                   ) : (
                     <div className="space-y-2">
                       <Button 
-                        variant="ghost" 
                         onClick={() => {
                           router.push("/signin");
                           setIsMobileMenuOpen(false);
                         }}
-                        className="w-full"
+                        className="w-full flex items-center gap-2"
                       >
-                        Sign In
-                      </Button>
-                      <Button 
-                        onClick={() => {
-                          router.push("/signup");
-                          setIsMobileMenuOpen(false);
-                        }}
-                        className="w-full"
-                      >
-                        Sign Up
+                        <Icon icon="logos:google-icon" className="h-4 w-4" />
+                        Sign In with Google
                       </Button>
                     </div>
                   )}

@@ -5,7 +5,6 @@
 
 import { prisma } from '@/lib/prisma'
 import { webSocketManager } from '@/lib/websocket-server'
-// import { sendNotificationEmail } from '@/lib/email-notifications'
 
 export type NotificationType = 'mention' | 'reply' | 'follow' | 'like' | 'trophy' | 'message' | 'system'
 
@@ -19,28 +18,24 @@ export interface CreateNotificationData {
   commentId?: string
   conversationId?: string
   data?: Record<string, any>
-  emailNotification?: boolean
-  pushNotification?: boolean
 }
 
 export interface NotificationPreferences {
-  mentions: { email: boolean; push: boolean; realtime: boolean }
-  replies: { email: boolean; push: boolean; realtime: boolean }
-  follows: { email: boolean; push: boolean; realtime: boolean }
-  likes: { email: boolean; push: boolean; realtime: boolean }
-  messages: { email: boolean; push: boolean; realtime: boolean }
-  system: { email: boolean; push: boolean; realtime: boolean }
-  emailDigest: 'instant' | 'hourly' | 'daily' | 'weekly' | 'never'
+  mentions: { realtime: boolean }
+  replies: { realtime: boolean }
+  follows: { realtime: boolean }
+  likes: { realtime: boolean }
+  messages: { realtime: boolean }
+  system: { realtime: boolean }
 }
 
 const DEFAULT_PREFERENCES: NotificationPreferences = {
-  mentions: { email: true, push: true, realtime: true },
-  replies: { email: true, push: true, realtime: true },
-  follows: { email: false, push: true, realtime: true },
-  likes: { email: false, push: false, realtime: true },
-  messages: { email: true, push: true, realtime: true },
-  system: { email: true, push: true, realtime: true },
-  emailDigest: 'daily'
+  mentions: { realtime: true },
+  replies: { realtime: true },
+  follows: { realtime: true },
+  likes: { realtime: true },
+  messages: { realtime: true },
+  system: { realtime: true }
 }
 
 export class NotificationService {
@@ -84,16 +79,6 @@ export class NotificationService {
           commentId: data.commentId,
           createdAt: notification.createdAt
         })
-      }
-
-      // Send email notification if enabled
-      if (typePrefs.email && data.emailNotification !== false) {
-        await this.sendEmailNotification(notification)
-      }
-
-      // Send push notification if enabled
-      if (typePrefs.push && data.pushNotification !== false) {
-        await this.sendPushNotification(notification)
       }
 
       return notification
@@ -357,31 +342,6 @@ export class NotificationService {
     } catch (error) {
       console.error('Error cleaning up old notifications:', error)
       throw error
-    }
-  }
-
-  /**
-   * Send email notification
-   */
-  private static async sendEmailNotification(notification: any) {
-    try {
-      // TODO: Send email notification (temporary disabled)
-      // await sendNotificationEmail(notification)
-    } catch (error) {
-      console.error('Error sending email notification:', error)
-    }
-  }
-
-  /**
-   * Send push notification
-   */
-  private static async sendPushNotification(notification: any) {
-    try {
-      // Implementation for push notifications using web-push
-      // This would integrate with service workers and push subscriptions
-      console.log('Push notification would be sent here:', notification.title)
-    } catch (error) {
-      console.error('Error sending push notification:', error)
     }
   }
 

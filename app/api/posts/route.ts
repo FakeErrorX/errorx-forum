@@ -23,12 +23,50 @@ export async function GET(request: NextRequest) {
     const { limit, offset, categoryId, authorId, search } = queryParams;
     const featureFilter = searchParams.get('featured')
 
+    // Convert custom authorId (userId) to internal authorId if provided
+    let internalAuthorId: string | undefined = undefined;
+    if (authorId && authorId !== 'undefined' && authorId !== 'null') {
+      const parsedAuthorId = parseInt(authorId);
+      if (!isNaN(parsedAuthorId)) {
+        const { prisma } = await import("@/lib/prisma");
+        const user = await prisma.user.findUnique({
+          where: { userId: parsedAuthorId },
+          select: { id: true }
+        });
+        if (user) {
+          internalAuthorId = user.id;
+        } else {
+          // If no user found with this custom ID, return empty array
+          return createSecureResponse([]);
+        }
+      } else {
+        // If authorId is not a valid number, return empty array
+        return createSecureResponse([]);
+      }
+    }
+
+    // Convert custom categoryId to internal categoryId if provided
+    let internalCategoryId: string | undefined = undefined;
+    if (categoryId) {
+      const { prisma } = await import("@/lib/prisma");
+      const category = await prisma.category.findFirst({
+        where: { categoryId: parseInt(categoryId) },
+        select: { id: true }
+      });
+      if (category) {
+        internalCategoryId = category.id;
+      } else {
+        // If no category found with this custom ID, return empty array
+        return createSecureResponse([]);
+      }
+    }
+
     let posts;
     if (search) {
       const { searchPosts } = await import("../database");
       posts = await searchPosts(search, limit);
     } else {
-      posts = await getPosts(limit, offset, categoryId, authorId, featureFilter === 'true');
+      posts = await getPosts(limit, offset, internalCategoryId, internalAuthorId, featureFilter === 'true');
     }
     
     // Transform posts to hide internal IDs and use custom IDs

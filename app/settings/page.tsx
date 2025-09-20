@@ -1,82 +1,117 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { ProfileEditor } from "@/components/ui/profile-editor";
+import { EnhancedSettings } from "@/components/ui/enhanced-settings";
 import { toast } from "sonner";
 import { Icon } from '@iconify/react';
 
-interface User {
-  userId: number; // Custom sequential user ID
+interface UserProfile {
+  id: string;
+  userId: number;
   name: string | null;
   username: string | null;
   email: string;
   image: string | null;
   bio: string | null;
+  location: string | null;
+  website: string | null;
+  birthday: string | null;
+  timezone: string | null;
+  socialLinks: {
+    twitter?: string;
+    github?: string;
+    linkedin?: string;
+    discord?: string;
+    instagram?: string;
+    youtube?: string;
+  };
+  interests: string[];
+  skills: string[];
   postCount: number;
   reputation: number;
   isActive: boolean;
-  preferences: {
-    theme: 'light' | 'dark' | 'system';
-    notifications: boolean;
-    emailUpdates: boolean;
-  };
-  createdAt: string;
-  updatedAt: string;
   canChangeUsername?: boolean;
   usernameChangeDaysLeft?: number;
   nextUsernameChangeAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface UserSettings {
+  privacy: {
+    showOnline: boolean;
+    showEmail: boolean;
+    showBirthday: boolean;
+    showLocation: boolean;
+    allowProfileViews: boolean;
+    allowDirectMessages: boolean;
+    allowMentions: boolean;
+    searchableProfile: boolean;
+    showActivity: boolean;
+  };
+  notifications: {
+    email: {
+      mentions: boolean;
+      replies: boolean;
+      follows: boolean;
+      likes: boolean;
+      messages: boolean;
+      newsletters: boolean;
+      digest: boolean;
+      security: boolean;
+    };
+    push: {
+      mentions: boolean;
+      replies: boolean;
+      follows: boolean;
+      likes: boolean;
+      messages: boolean;
+      system: boolean;
+    };
+    frequency: {
+      digestFrequency: 'never' | 'daily' | 'weekly' | 'monthly';
+      quietHours: {
+        enabled: boolean;
+        start: string;
+        end: string;
+      };
+    };
+  };
+  content: {
+    theme: 'light' | 'dark' | 'system';
+    language: string;
+    timezone: string;
+    postsPerPage: number;
+    showImages: boolean;
+    showAvatars: boolean;
+    autoPlayVideos: boolean;
+    compactMode: boolean;
+  };
+  security: {
+    twoFactorEnabled: boolean;
+    loginNotifications: boolean;
+    sessionTimeout: number;
+    trustedDevices: string[];
+  };
 }
 
 export default function SettingsPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [settings, setSettings] = useState<UserSettings | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  const [clientIp, setClientIp] = useState<string | null>(null);
-  const [clientCountryCode, setClientCountryCode] = useState<string | null>(null);
-  const [clientUserAgent, setClientUserAgent] = useState<string | null>(null);
-  const [clientOs, setClientOs] = useState<string | null>(null);
-  const [clientBrowser, setClientBrowser] = useState<string | null>(null);
 
-  // Account settings
-  const [name, setName] = useState("");
-  const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
-  const [bio, setBio] = useState("");
-  const [canChangeUsername, setCanChangeUsername] = useState<boolean>(true);
-  const [usernameChangeDaysLeft, setUsernameChangeDaysLeft] = useState<number>(0);
-  const [nextUsernameChangeAt, setNextUsernameChangeAt] = useState<string | null>(null);
-  const [countdown, setCountdown] = useState<string>("");
-
-  // Password change
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-
-  // Preferences
-  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('system');
-  const [notifications, setNotifications] = useState(true);
-  const [emailUpdates, setEmailUpdates] = useState(true);
-
-  // Load user data
+  // Load user data and settings
   useEffect(() => {
-    const loadUserData = async () => {
+    const loadData = async () => {
       if (status === "loading") return;
       
       if (!session) {
@@ -85,217 +120,156 @@ export default function SettingsPage() {
       }
 
       try {
-        const response = await fetch('/api/users');
-        if (response.ok) {
-          const userData = await response.json();
-          setUser(userData);
-          setName(userData.name || "");
-          setUsername(userData.username || "");
-          setEmail(userData.email || "");
-          setBio(userData.bio || "");
-          setTheme(userData.preferences?.theme || 'system');
-          setNotifications(userData.preferences?.notifications ?? true);
-          setEmailUpdates(userData.preferences?.emailUpdates ?? true);
-          setCanChangeUsername(userData.canChangeUsername !== false);
-          setUsernameChangeDaysLeft(userData.usernameChangeDaysLeft || 0);
-          setNextUsernameChangeAt(userData.nextUsernameChangeAt || null);
-        } else {
+        // Load user profile
+        const userResponse = await fetch('/api/users');
+        if (userResponse.ok) {
+          const userData = await userResponse.json();
+          setUser({
+            ...userData,
+            socialLinks: userData.socialLinks || {},
+            interests: userData.interests || [],
+            skills: userData.skills || [],
+          });
+        } else if (userResponse.status === 401) {
           router.push("/signin");
+          return;
+        } else {
+          setError("Failed to load user data. Please refresh the page.");
+          return;
         }
+
+        // Load user settings (with defaults if not found)
+        const settingsResponse = await fetch('/api/users/settings');
+        let settingsData: UserSettings;
+        
+        if (settingsResponse.ok) {
+          settingsData = await settingsResponse.json();
+        } else {
+          // Use default settings if none exist
+          settingsData = {
+            privacy: {
+              showOnline: true,
+              showEmail: false,
+              showBirthday: false,
+              showLocation: true,
+              allowProfileViews: true,
+              allowDirectMessages: true,
+              allowMentions: true,
+              searchableProfile: true,
+              showActivity: true,
+            },
+            notifications: {
+              email: {
+                mentions: true,
+                replies: true,
+                follows: true,
+                likes: false,
+                messages: true,
+                newsletters: false,
+                digest: true,
+                security: true,
+              },
+              push: {
+                mentions: true,
+                replies: true,
+                follows: false,
+                likes: false,
+                messages: true,
+                system: true,
+              },
+              frequency: {
+                digestFrequency: 'weekly',
+                quietHours: {
+                  enabled: false,
+                  start: '22:00',
+                  end: '08:00',
+                },
+              },
+            },
+            content: {
+              theme: 'system',
+              language: 'en',
+              timezone: 'UTC',
+              postsPerPage: 20,
+              showImages: true,
+              showAvatars: true,
+              autoPlayVideos: false,
+              compactMode: false,
+            },
+            security: {
+              twoFactorEnabled: false,
+              loginNotifications: true,
+              sessionTimeout: 1440, // 24 hours
+              trustedDevices: [],
+            },
+          };
+        }
+        
+        setSettings(settingsData);
       } catch (error) {
-        console.error('Error loading user data:', error);
-        router.push("/signin");
+        console.error('Error loading data:', error);
+        setError("Failed to load data. Please check your connection and try again.");
       } finally {
         setLoading(false);
       }
     };
 
-    loadUserData();
+    loadData();
   }, [session, status, router]);
 
-  // Live countdown for username change
-  useEffect(() => {
-    if (!nextUsernameChangeAt) {
-      setCountdown("");
-      return;
-    }
-    const target = new Date(nextUsernameChangeAt).getTime();
-    const tick = () => {
-      const now = Date.now();
-      const diff = Math.max(0, target - now);
-      const totalSeconds = Math.floor(diff / 1000);
-      const days = Math.floor(totalSeconds / (24 * 3600));
-      const hours = Math.floor((totalSeconds % (24 * 3600)) / 3600);
-      const minutes = Math.floor((totalSeconds % 3600) / 60);
-      const seconds = totalSeconds % 60;
-      const parts = [] as string[];
-      if (days > 0) parts.push(`${days}d`);
-      parts.push(`${hours}h`, `${minutes}m`, `${seconds}s`);
-      setCountdown(parts.join(" "));
-    };
-    tick();
-    const interval = setInterval(tick, 1000);
-    return () => clearInterval(interval);
-  }, [nextUsernameChangeAt]);
-
-  useEffect(() => {
-    const fetchClientIp = async () => {
-      try {
-        const res = await fetch('/api/geo');
-        if (res.ok) {
-          const data = await res.json();
-          setClientIp(data.ip || null);
-          setClientCountryCode(data.countryCode || null);
-        }
-      } catch (err) {
-        // ignore ip errors silently
-      }
-    };
-
-    fetchClientIp();
-  }, []);
-
-  useEffect(() => {
-    try {
-      // navigator only exists in browser
-      const ua = typeof navigator !== 'undefined' ? navigator.userAgent : null;
-      setClientUserAgent(ua);
-
-      const detectOs = (s: string | null): string | null => {
-        if (!s) return null;
-        if (/Windows NT/i.test(s)) return 'Windows';
-        if (/Android/i.test(s)) return 'Android';
-        if (/(iPhone|iPad|iPod)/i.test(s)) return 'iOS';
-        if (/Mac OS X/i.test(s)) return 'macOS';
-        if (/Linux/i.test(s)) return 'Linux';
-        return 'Unknown';
-      };
-
-      const detectBrowser = (s: string | null): string | null => {
-        if (!s) return null;
-        if (/Edg\//i.test(s)) return 'Edge';
-        if (/OPR\//i.test(s)) return 'Opera';
-        if (/Chrome\//i.test(s) && !/Chromium/i.test(s)) return 'Chrome';
-        if (/Firefox\//i.test(s)) return 'Firefox';
-        if (/Version\/.+Safari/i.test(s) && !/Chrome\//i.test(s)) return 'Safari';
-        return 'Browser';
-      };
-
-      setClientOs(detectOs(ua));
-      setClientBrowser(detectBrowser(ua));
-    } catch (_) {
-      // ignore
-    }
-  }, []);
-
-  const handleSaveAccount = async () => {
-    setSaving(true);
-    setError("");
-    setSuccess("");
-
+  const handleProfileSave = async (profileData: Partial<UserProfile>) => {
     try {
       const response = await fetch('/api/users', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          name,
-          username,
-          bio,
-        }),
+        body: JSON.stringify(profileData),
       });
 
       if (response.ok) {
-        setSuccess("Account settings updated successfully!");
-        toast.success("Account settings updated");
+        const updatedUser = await response.json();
+        setUser(updatedUser);
+        toast.success("Profile updated successfully!");
       } else {
         const errorData = await response.json();
-        setError(errorData.error || "Failed to update account settings");
+        throw new Error(errorData.error || "Failed to update profile");
       }
     } catch (error) {
-      setError("Failed to update account settings. Please try again.");
-    } finally {
-      setSaving(false);
+      console.error('Profile save error:', error);
+      throw error;
     }
   };
 
-  const handleChangePassword = async () => {
-    if (newPassword !== confirmPassword) {
-      setError("New passwords don't match");
-      return;
-    }
-
-    if (newPassword.length < 8) {
-      setError("Password must be at least 8 characters long");
-      return;
-    }
-
-    setSaving(true);
-    setError("");
-    setSuccess("");
-
+  const handleSettingsSave = async (section: keyof UserSettings, data: any) => {
     try {
-      const response = await fetch('/api/users/password', {
+      const response = await fetch('/api/users/settings', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          currentPassword,
-          newPassword,
+          section,
+          data,
         }),
       });
 
       if (response.ok) {
-        setSuccess("Password changed successfully!");
-        setCurrentPassword("");
-        setNewPassword("");
-        setConfirmPassword("");
-        toast.success("Password changed successfully");
+        if (settings) {
+          setSettings({
+            ...settings,
+            [section]: data,
+          });
+        }
       } else {
         const errorData = await response.json();
-        setError(errorData.error || "Failed to change password");
+        throw new Error(errorData.error || "Failed to update settings");
       }
     } catch (error) {
-      setError("Failed to change password. Please try again.");
-    } finally {
-      setSaving(false);
+      console.error('Settings save error:', error);
+      throw error;
     }
   };
-
-  const handleSavePreferences = async () => {
-    setSaving(true);
-    setError("");
-    setSuccess("");
-
-    try {
-      const response = await fetch('/api/users/preferences', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          theme,
-          notifications,
-          emailUpdates,
-        }),
-      });
-
-      if (response.ok) {
-        setSuccess("Preferences updated successfully!");
-        toast.success("Preferences updated");
-      } else {
-        const errorData = await response.json();
-        setError(errorData.error || "Failed to update preferences");
-      }
-    } catch (error) {
-      setError("Failed to update preferences. Please try again.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
 
   if (loading) {
     return (
@@ -310,18 +284,31 @@ export default function SettingsPage() {
     );
   }
 
-  if (!user) {
-    return null;
+  if (!user || !settings) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center space-y-4">
+            <Icon icon="lucide:alert-circle" className="h-12 w-12 mx-auto text-muted-foreground" />
+            <p className="text-lg">Failed to load settings</p>
+            <Button onClick={() => window.location.reload()}>
+              <Icon icon="lucide:refresh-cw" className="h-4 w-4 mr-2" />
+              Retry
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">Settings</h1>
-            <p className="text-muted-foreground">Manage your account settings and preferences</p>
+            <p className="text-muted-foreground">Manage your account and preferences</p>
           </div>
           <Button variant="outline" onClick={() => router.back()}>
             <Icon icon="lucide:arrow-left" className="h-4 w-4 mr-2" />
@@ -329,14 +316,7 @@ export default function SettingsPage() {
           </Button>
         </div>
 
-        {/* Success/Error Messages */}
-        {success && (
-          <Alert>
-            <Icon icon="lucide:check-circle" className="h-4 w-4" />
-            <AlertDescription>{success}</AlertDescription>
-          </Alert>
-        )}
-
+        {/* Error Message */}
         {error && (
           <Alert variant="destructive">
             <Icon icon="lucide:alert-circle" className="h-4 w-4" />
@@ -345,396 +325,29 @@ export default function SettingsPage() {
         )}
 
         {/* Settings Tabs */}
-        <Tabs defaultValue="account" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="account">Account</TabsTrigger>
-            <TabsTrigger value="preferences">Preferences</TabsTrigger>
-            <TabsTrigger value="security">Security</TabsTrigger>
-            <TabsTrigger value="pwa">PWA</TabsTrigger>
+        <Tabs defaultValue="profile" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="profile">Profile & Account</TabsTrigger>
+            <TabsTrigger value="settings">Privacy & Settings</TabsTrigger>
           </TabsList>
 
-          {/* Account Settings */}
-          <TabsContent value="account" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Profile Information</CardTitle>
-                <CardDescription>
-                  Update your public profile information
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center space-x-4">
-                  <Avatar className="h-16 w-16">
-                    <AvatarImage src={user.image || ""} alt={user.name || "User"} />
-                    <AvatarFallback className="text-xl">
-                      {user.name?.charAt(0).toUpperCase() || "U"}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="text-sm font-medium">{user.name || "No name set"}</p>
-                    <p className="text-sm text-muted-foreground">@{user.username || "no-username"}</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Display Name</Label>
-                    <Input
-                      id="name"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="Enter your display name"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="username">Username</Label>
-                    <Input
-                      id="username"
-                      value={username}
-                      disabled={!canChangeUsername}
-                      className={!canChangeUsername ? "bg-muted" : undefined}
-                      onChange={(e) => setUsername(e.target.value)}
-                      placeholder="Choose a username"
-                    />
-                    {!canChangeUsername && (
-                      <p className="text-xs text-muted-foreground">
-                        You can change your username after {countdown || `${usernameChangeDaysLeft} day${usernameChangeDaysLeft === 1 ? '' : 's'}` }.
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={email}
-                    disabled
-                    className="bg-muted"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Email cannot be changed. Contact support if needed.
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="bio">Bio</Label>
-                  <Textarea
-                    id="bio"
-                    value={bio}
-                    onChange={(e) => setBio(e.target.value)}
-                    placeholder="Tell us about yourself"
-                    rows={3}
-                  />
-                </div>
-
-                <Button onClick={handleSaveAccount} disabled={saving}>
-                  {saving ? (
-                    <>
-                      <Icon icon="lucide:loader-2" className="h-4 w-4 mr-2 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Icon icon="lucide:save" className="h-4 w-4 mr-2" />
-                      Save Changes
-                    </>
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Account Statistics</CardTitle>
-                <CardDescription>
-                  Your forum activity and reputation
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold">{user.postCount}</div>
-                    <div className="text-sm text-muted-foreground">Posts</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold">{user.reputation}</div>
-                    <div className="text-sm text-muted-foreground">Reputation</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold">
-                      {new Date(user.createdAt).toLocaleDateString()}
-                    </div>
-                    <div className="text-sm text-muted-foreground">Joined</div>
-                  </div>
-                  <div className="text-center">
-                    <Badge variant={user.isActive ? "default" : "secondary"}>
-                      {user.isActive ? "Active" : "Inactive"}
-                    </Badge>
-                    <div className="text-sm text-muted-foreground mt-1">Status</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          {/* Profile Editor Tab */}
+          <TabsContent value="profile">
+            <ProfileEditor 
+              user={user} 
+              onSave={handleProfileSave}
+              isLoading={loading}
+            />
           </TabsContent>
 
-          {/* Preferences */}
-          <TabsContent value="preferences" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Appearance & Notifications</CardTitle>
-                <CardDescription>
-                  Customize your experience
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="theme">Theme</Label>
-                  <Select value={theme} onValueChange={(value: 'light' | 'dark' | 'system') => setTheme(value)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="light">Light</SelectItem>
-                      <SelectItem value="dark">Dark</SelectItem>
-                      <SelectItem value="system">System</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <Separator />
-
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label>Push Notifications</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Receive notifications for new posts and replies
-                      </p>
-                    </div>
-                    <Switch
-                      checked={notifications}
-                      onCheckedChange={setNotifications}
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label>Email Updates</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Receive email notifications for important updates
-                      </p>
-                    </div>
-                    <Switch
-                      checked={emailUpdates}
-                      onCheckedChange={setEmailUpdates}
-                    />
-                  </div>
-                </div>
-
-                <Button onClick={handleSavePreferences} disabled={saving}>
-                  {saving ? (
-                    <>
-                      <Icon icon="lucide:loader-2" className="h-4 w-4 mr-2 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Icon icon="lucide:save" className="h-4 w-4 mr-2" />
-                      Save Preferences
-                    </>
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
+          {/* Enhanced Settings Tab */}
+          <TabsContent value="settings">
+            <EnhancedSettings 
+              settings={settings} 
+              onSave={handleSettingsSave}
+              isLoading={loading}
+            />
           </TabsContent>
-
-          {/* Security */}
-          <TabsContent value="security" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Change Password</CardTitle>
-                <CardDescription>
-                  Update your password to keep your account secure
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="current-password">Current Password</Label>
-                  <Input
-                    id="current-password"
-                    type="password"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    placeholder="Enter current password"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="new-password">New Password</Label>
-                  <Input
-                    id="new-password"
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Enter new password"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="confirm-password">Confirm New Password</Label>
-                  <Input
-                    id="confirm-password"
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Confirm new password"
-                  />
-                </div>
-
-                <Button onClick={handleChangePassword} disabled={saving}>
-                  {saving ? (
-                    <>
-                      <Icon icon="lucide:loader-2" className="h-4 w-4 mr-2 animate-spin" />
-                      Changing...
-                    </>
-                  ) : (
-                    <>
-                      <Icon icon="lucide:key" className="h-4 w-4 mr-2" />
-                      Change Password
-                    </>
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Active Sessions</CardTitle>
-                <CardDescription>
-                  Manage your active sessions across devices
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="relative overflow-hidden rounded-lg border bg-gradient-to-br from-background to-muted p-4 shadow-sm transition hover:shadow-md">
-                  <div className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-gradient-to-br from-primary/10 to-primary/0 blur-2xl" />
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary/10 to-primary/20 text-primary ring-1 ring-primary/20">
-                        <Icon
-                          icon={
-                            clientOs === 'Windows' ? 'mdi:microsoft-windows' :
-                            clientOs === 'Android' ? 'mdi:android' :
-                            clientOs === 'iOS' ? 'mdi:apple-ios' :
-                            clientOs === 'macOS' ? 'mdi:apple' :
-                            clientOs === 'Linux' ? 'mdi:linux' : 'lucide:monitor'
-                          }
-                          className="h-4 w-4"
-                        />
-                      </div>
-                      <div className="space-y-0.5">
-                        <div className="flex items-center gap-1.5">
-                          <p className="text-sm font-semibold tracking-tight">Current Session</p>
-                        </div>
-                        <p className="text-xs text-muted-foreground">Signed in {new Date().toLocaleString()}</p>
-                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                          {clientIp && (
-                            <span className="inline-flex items-center gap-1 rounded-full border bg-background px-1.5 py-0.5 text-[11px] text-muted-foreground shadow-sm">
-                              {clientCountryCode ? (
-                                <Icon icon={`circle-flags:${clientCountryCode.toLowerCase()}`} className="h-3 w-3" />
-                              ) : (
-                                <Icon icon="lucide:map-pin" className="h-3 w-3" />
-                              )}
-                              <span className="font-mono">{clientIp}</span>
-                            </span>
-                          )}
-                          {clientBrowser && (
-                            <span className="inline-flex max-w-full items-center gap-1 rounded-full border bg-background px-1.5 py-0.5 text-[11px] text-muted-foreground shadow-sm">
-                              <Icon
-                                icon={
-                                  clientBrowser === 'Chrome' ? 'mdi:google-chrome' :
-                                  clientBrowser === 'Edge' ? 'mdi:microsoft-edge' :
-                                  clientBrowser === 'Firefox' ? 'mdi:firefox' :
-                                  clientBrowser === 'Safari' ? 'simple-icons:safari' :
-                                  clientBrowser === 'Opera' ? 'mdi:opera' : 'lucide:globe'
-                                }
-                                className="h-3 w-3"
-                              />
-                              <span className="truncate max-w-[120px] sm:max-w-[160px]">{clientBrowser}</span>
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="pt-0.5">
-                      <Badge variant="default" className="rounded-full px-2 py-0 text-[10px] leading-4 flex items-center gap-1.5">
-                        <span className="relative flex h-2 w-2">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
-                          <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
-                        </span>
-                        Active
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* PWA Settings */}
-          <TabsContent value="pwa" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Icon icon="material-symbols:smartphone" className="h-5 w-5" />
-                  Progressive Web App
-                </CardTitle>
-                <CardDescription>
-                  Manage your PWA experience, offline access, and push notifications
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="text-center py-8">
-                  <Icon icon="material-symbols:smartphone" className="h-12 w-12 text-blue-500 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium mb-2">PWA Settings</h3>
-                  <p className="text-gray-600 mb-4">
-                    Configure your Progressive Web App experience with installation, 
-                    notifications, and offline features.
-                  </p>
-                  <Button 
-                    onClick={() => router.push('/settings/pwa')}
-                    className="flex items-center gap-2"
-                  >
-                    <Icon icon="material-symbols:settings" className="h-4 w-4" />
-                    Open PWA Settings
-                  </Button>
-                </div>
-
-                <Separator />
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="text-center p-4 bg-blue-50 rounded-lg">
-                    <Icon icon="material-symbols:download" className="h-6 w-6 text-blue-600 mx-auto mb-2" />
-                    <h4 className="font-medium text-sm mb-1">App Installation</h4>
-                    <p className="text-xs text-gray-600">Install as native app</p>
-                  </div>
-                  <div className="text-center p-4 bg-green-50 rounded-lg">
-                    <Icon icon="material-symbols:notifications" className="h-6 w-6 text-green-600 mx-auto mb-2" />
-                    <h4 className="font-medium text-sm mb-1">Push Notifications</h4>
-                    <p className="text-xs text-gray-600">Real-time updates</p>
-                  </div>
-                  <div className="text-center p-4 bg-purple-50 rounded-lg">
-                    <Icon icon="material-symbols:cloud-off" className="h-6 w-6 text-purple-600 mx-auto mb-2" />
-                    <h4 className="font-medium text-sm mb-1">Offline Access</h4>
-                    <p className="text-xs text-gray-600">Browse without internet</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
         </Tabs>
       </div>
     </div>

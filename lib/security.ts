@@ -28,27 +28,10 @@ export const securityHeaders = {
   'Cross-Origin-Resource-Policy': 'cross-origin',
 };
 
-// Content Security Policy - Permissive configuration
+// Content Security Policy function removed - CSP disabled
 export function generateCSP(nonce?: string) {
-  const policies = [
-    "default-src *",
-    `script-src * 'unsafe-eval' 'unsafe-inline' ${nonce ? `'nonce-${nonce}'` : ""}`,
-    "style-src * 'unsafe-inline'",
-    "font-src *",
-    "img-src * data: blob:",
-    "media-src * data: blob:",
-    "object-src *",
-    "base-uri *",
-    "form-action *",
-    "frame-ancestors *",
-    "frame-src *",
-    "child-src *",
-    "connect-src *",
-    "worker-src * blob:",
-    "manifest-src *",
-  ];
-
-  return policies.join('; ');
+  // CSP generation disabled to avoid blocking external resources
+  return '';
 }
 
 // Generate cryptographically secure nonce

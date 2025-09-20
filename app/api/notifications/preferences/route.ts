@@ -6,36 +6,23 @@ import { z } from 'zod'
 
 const NotificationPreferencesSchema = z.object({
   mentions: z.object({
-    email: z.boolean(),
-    push: z.boolean(),
     realtime: z.boolean()
   }).optional(),
   replies: z.object({
-    email: z.boolean(),
-    push: z.boolean(),
     realtime: z.boolean()
   }).optional(),
   follows: z.object({
-    email: z.boolean(),
-    push: z.boolean(),
     realtime: z.boolean()
   }).optional(),
   likes: z.object({
-    email: z.boolean(),
-    push: z.boolean(),
     realtime: z.boolean()
   }).optional(),
   messages: z.object({
-    email: z.boolean(),
-    push: z.boolean(),
     realtime: z.boolean()
   }).optional(),
   system: z.object({
-    email: z.boolean(),
-    push: z.boolean(),
     realtime: z.boolean()
-  }).optional(),
-  emailDigest: z.enum(['instant', 'hourly', 'daily', 'weekly', 'never']).optional()
+  }).optional()
 })
 
 export async function GET(request: NextRequest) {
