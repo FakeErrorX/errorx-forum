@@ -1,4 +1,4 @@
-import { NextSeo, NextSeoProps } from 'next-seo';
+import { generateNextSeo, type NextSeoProps } from 'next-seo/pages';
 import { generatePageSEO, generatePostSEO } from '@/lib/seo';
 
 interface PageSEOProps {
@@ -55,7 +55,7 @@ export function PageSEO({
     },
   };
 
-  return <NextSeo {...seoProps} />;
+  return <>{generateNextSeo(seoProps)}</>;
 }
 
 interface PostSEOProps {
@@ -97,5 +97,5 @@ export function PostSEO({
     },
   };
 
-  return <NextSeo {...seoProps} />;
+  return <>{generateNextSeo(seoProps)}</>;
 }

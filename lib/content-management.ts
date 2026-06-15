@@ -1,3 +1,5 @@
+import 'server-only'
+
 import { PrismaClient, Post, User, Category, ThreadPrefix } from '@prisma/client';
 import { prisma } from './prisma';
 

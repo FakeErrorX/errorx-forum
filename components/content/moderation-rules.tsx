@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Shield, Plus, Edit, Trash2, AlertTriangle } from 'lucide-react';
-import { ModerationAction } from '@/lib/content-management';
+import { ModerationAction } from '@/lib/content-types';
 
 interface ModerationRule {
   id: string;

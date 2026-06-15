@@ -183,7 +183,6 @@ export function ContentScheduler({ categories, prefixes, onSchedule, onSaveDraft
                 selected={formData.scheduledFor}
                 onSelect={(date) => setFormData(prev => ({ ...prev, scheduledFor: date }))}
                 disabled={(date) => date < new Date()}
-                initialFocus
               />
               <div className="p-3 border-t">
                 <Input

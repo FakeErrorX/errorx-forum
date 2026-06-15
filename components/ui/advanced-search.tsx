@@ -340,7 +340,6 @@ export function SearchComponent({
                       mode="single"
                       selected={filters.dateFrom}
                       onSelect={(date) => setFilters(prev => ({ ...prev, dateFrom: date }))}
-                      initialFocus
                     />
                   </PopoverContent>
                 </Popover>
@@ -358,7 +357,6 @@ export function SearchComponent({
                       mode="single"
                       selected={filters.dateTo}
                       onSelect={(date) => setFilters(prev => ({ ...prev, dateTo: date }))}
-                      initialFocus
                     />
                   </PopoverContent>
                 </Popover>

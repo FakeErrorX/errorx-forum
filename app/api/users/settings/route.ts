@@ -12,13 +12,16 @@ export async function GET() {
 
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
+      include: {
+        settings: true,
+      },
     });
 
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Return default settings structure if no settings exist
+    // Default settings structure
     const defaultSettings = {
       privacy: {
         showOnline: true,
@@ -77,25 +80,49 @@ export async function GET() {
       },
     };
 
-    // TODO: Load actual settings from database when settings table is created
-    // For now, return defaults merged with any preferences from user table
-    const userPreferences = user.preferences as any;
-    const settings = {
-      ...defaultSettings,
-      content: {
-        ...defaultSettings.content,
-        theme: userPreferences?.theme || 'system',
-      },
-      notifications: {
-        ...defaultSettings.notifications,
-        email: {
-          ...defaultSettings.notifications.email,
-          // Map existing preferences if available
-        },
-      },
-    };
+    // Merge with actual settings from database if they exist
+    if (user.settings) {
+      const privacySettings = (user.settings.privacySettings as any) || {};
+      const contentSettings = (user.settings.contentSettings as any) || {};
+      const moderationSettings = (user.settings.moderationSettings as any) || {};
+      const customSettings = (user.settings.customSettings as any) || {};
 
-    return NextResponse.json(settings);
+      const settings = {
+        privacy: {
+          ...defaultSettings.privacy,
+          ...privacySettings,
+        },
+        notifications: {
+          ...defaultSettings.notifications,
+          ...(customSettings.notifications || {}),
+        },
+        content: {
+          ...defaultSettings.content,
+          theme: user.settings.theme,
+          language: user.settings.language,
+          timezone: user.settings.timezone,
+          ...contentSettings,
+        },
+        security: {
+          ...defaultSettings.security,
+          ...(customSettings.security || {}),
+        },
+      };
+
+      return NextResponse.json(settings);
+    } else {
+      // Create default settings for user
+      await prisma.userSettings.create({
+        data: {
+          userId: user.id,
+          theme: 'system',
+          language: 'en',
+          timezone: 'UTC',
+        },
+      });
+
+      return NextResponse.json(defaultSettings);
+    }
   } catch (error) {
     console.error('Error fetching user settings:', error);
     return NextResponse.json(
@@ -124,29 +151,82 @@ export async function PUT(request: NextRequest) {
 
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
+      include: {
+        settings: true,
+      },
     });
 
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // TODO: Implement proper settings storage when settings table is added to schema
-    // For now, handle basic theme preference in user table
-    if (section === 'content' && data.theme) {
-      const currentPreferences = user.preferences as any || {};
-      await prisma.user.update({
-        where: { id: user.id },
+    // Create or update user settings
+    const currentSettings = user.settings;
+    const currentPrivacySettings = currentSettings ? (currentSettings.privacySettings as any) || {} : {};
+    const currentContentSettings = currentSettings ? (currentSettings.contentSettings as any) || {} : {};
+    const currentCustomSettings = currentSettings ? (currentSettings.customSettings as any) || {} : {};
+
+    let updateData: any = {};
+
+    switch (section) {
+      case 'privacy':
+        updateData.privacySettings = {
+          ...currentPrivacySettings,
+          ...data,
+        };
+        break;
+
+      case 'content':
+        updateData.theme = data.theme || (currentSettings?.theme) || 'system';
+        updateData.language = data.language || (currentSettings?.language) || 'en';
+        updateData.timezone = data.timezone || (currentSettings?.timezone) || 'UTC';
+        updateData.contentSettings = {
+          ...currentContentSettings,
+          ...data,
+        };
+        break;
+
+      case 'notifications':
+        updateData.customSettings = {
+          ...currentCustomSettings,
+          notifications: data,
+        };
+        break;
+
+      case 'security':
+        updateData.customSettings = {
+          ...currentCustomSettings,
+          security: data,
+        };
+        break;
+
+      default:
+        return NextResponse.json(
+          { error: 'Invalid section' },
+          { status: 400 }
+        );
+    }
+
+    if (user.settings) {
+      // Update existing settings
+      await prisma.userSettings.update({
+        where: { userId: user.id },
+        data: updateData,
+      });
+    } else {
+      // Create new settings
+      await prisma.userSettings.create({
         data: {
-          preferences: {
-            ...currentPreferences,
-            theme: data.theme,
-          },
+          userId: user.id,
+          theme: updateData.theme || 'system',
+          language: updateData.language || 'en',
+          timezone: updateData.timezone || 'UTC',
+          privacySettings: updateData.privacySettings || {},
+          contentSettings: updateData.contentSettings || {},
+          customSettings: updateData.customSettings || {},
         },
       });
     }
-
-    // TODO: Store other settings in dedicated settings table
-    // This would require adding a UserSettings model to the Prisma schema
 
     return NextResponse.json({ success: true });
   } catch (error) {

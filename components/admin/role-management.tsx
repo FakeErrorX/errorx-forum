@@ -46,7 +46,7 @@ import {
   Unlock,
   Copy
 } from 'lucide-react'
-import { ENHANCED_PERMISSIONS, PermissionCategory } from '@/lib/permissions'
+import { ENHANCED_PERMISSIONS, type PermissionCategory } from '@/lib/permissions-data'
 
 interface Role {
   id: string

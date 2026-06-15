@@ -2,7 +2,7 @@
 
 import { useSession } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
-import { PERMISSIONS, ROLES } from '@/lib/permissions'
+import { PERMISSIONS, ROLES } from '@/lib/permissions-data'
 
 type ButtonProps = React.ComponentProps<typeof Button>
 

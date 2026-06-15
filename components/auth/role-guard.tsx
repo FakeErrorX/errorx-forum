@@ -2,7 +2,7 @@
 
 import { useSession } from 'next-auth/react'
 import { ReactNode } from 'react'
-import { PERMISSIONS, ROLES } from '@/lib/permissions'
+import { PERMISSIONS, ROLES } from '@/lib/permissions-data'
 
 interface RoleGuardProps {
   children: ReactNode

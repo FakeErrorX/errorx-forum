@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { FileUpload } from '@/components/ui/file-upload';
-import { CalendarIcon, Camera, Globe, MapPin, Briefcase, Github, Twitter, Linkedin, Instagram, Facebook, Youtube } from 'lucide-react';
+import { CalendarIcon, Camera, Globe, MapPin, Briefcase } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -63,12 +63,12 @@ const timezones = [
 ];
 
 const socialPlatforms = [
-  { key: 'twitter', name: 'Twitter', icon: Twitter, placeholder: 'https://twitter.com/username' },
-  { key: 'github', name: 'GitHub', icon: Github, placeholder: 'https://github.com/username' },
-  { key: 'linkedin', name: 'LinkedIn', icon: Linkedin, placeholder: 'https://linkedin.com/in/username' },
-  { key: 'instagram', name: 'Instagram', icon: Instagram, placeholder: 'https://instagram.com/username' },
-  { key: 'facebook', name: 'Facebook', icon: Facebook, placeholder: 'https://facebook.com/username' },
-  { key: 'youtube', name: 'YouTube', icon: Youtube, placeholder: 'https://youtube.com/@username' },
+  { key: 'twitter', name: 'Twitter', icon: Globe, placeholder: 'https://twitter.com/username' },
+  { key: 'github', name: 'GitHub', icon: Globe, placeholder: 'https://github.com/username' },
+  { key: 'linkedin', name: 'LinkedIn', icon: Globe, placeholder: 'https://linkedin.com/in/username' },
+  { key: 'instagram', name: 'Instagram', icon: Globe, placeholder: 'https://instagram.com/username' },
+  { key: 'facebook', name: 'Facebook', icon: Globe, placeholder: 'https://facebook.com/username' },
+  { key: 'youtube', name: 'YouTube', icon: Globe, placeholder: 'https://youtube.com/@username' },
 ];
 
 export function ProfileEditor({ user, onSave, isLoading = false }: ProfileEditorProps) {
@@ -316,7 +316,6 @@ export function ProfileEditor({ user, onSave, isLoading = false }: ProfileEditor
                     selected={formData.birthday ? new Date(formData.birthday) : undefined}
                     onSelect={(date) => handleInputChange('birthday', date ? date.toISOString() : null)}
                     disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
-                    initialFocus
                   />
                 </PopoverContent>
               </Popover>

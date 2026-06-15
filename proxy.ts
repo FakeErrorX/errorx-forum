@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateOrigin, createSecureErrorResponse } from './lib/api-security';
 import { getToken } from 'next-auth/jwt';
-import { hasPermission, PERMISSIONS } from './lib/permissions';
+import { ROLES } from './lib/permissions-data';
 import { logger, logSecurityEvent } from '@/lib/logging';
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
   try {
@@ -82,9 +82,10 @@ export async function middleware(request: NextRequest) {
           return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        // Check if user has admin access
-        const permissionCheck = await hasPermission(userId, PERMISSIONS.ADMIN_ACCESS);
-        if (!permissionCheck.hasPermission) {
+        const roleName = (token as unknown as { role?: { name?: string } } | null)?.role?.name;
+        const allowedRoles: string[] = [ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.STAFF, ROLES.MOD];
+
+        if (!roleName || !allowedRoles.includes(roleName)) {
           logSecurityEvent({
             type: 'auth_failure',
             severity: 'high',
@@ -94,14 +95,14 @@ export async function middleware(request: NextRequest) {
             details: {
               reason: 'Insufficient permissions for admin route',
               path: pathname,
-              userRole: permissionCheck.userRole,
-              requiredPermission: permissionCheck.requiredPermission,
+              userRole: roleName || 'unknown',
+              requiredPermission: 'admin access role',
             },
           });
 
           return NextResponse.json({ 
             error: 'Insufficient permissions',
-            details: `Required: ${permissionCheck.requiredPermission}, User role: ${permissionCheck.userRole}`
+            details: `Required role: admin, super_admin, staff, or mod. User role: ${roleName || 'unknown'}`
           }, { status: 403 });
         }
       }
@@ -130,12 +131,12 @@ export async function middleware(request: NextRequest) {
     return response;
 
   } catch (error) {
-    logger.error('Middleware error', error instanceof Error ? error : new Error(String(error)), {
+    logger.error('Proxy error', error instanceof Error ? error : new Error(String(error)), {
       path: pathname,
       method: request.method,
     });
 
-    // Log security event for middleware failures
+    // Log security event for proxy failures
     logSecurityEvent({
       type: 'suspicious_activity',
       severity: 'medium',
@@ -172,12 +173,6 @@ function addSecurityHeaders(response: NextResponse) {
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
     '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 };

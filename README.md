@@ -2,12 +2,12 @@
 
 # 🚀 ErrorX Forum
 
-> **A modern, full-featured forum application built with Next.js 15**
+> **A modern, full-featured forum application built with Next.js 16**
 
-[![Next.js](https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.0-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
-[![Prisma](https://img.shields.io/badge/Prisma-5.0-2D3748?style=for-the-badge&logo=prisma)](https://prisma.io/)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-6-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.0-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
+[![Prisma](https://img.shields.io/badge/Prisma-7.0-2D3748?style=for-the-badge&logo=prisma)](https://prisma.io/)
 
 *Featuring user authentication, post management, file uploads, and real-time interactions*
 
@@ -93,20 +93,20 @@
 <div align="center">
 
 ### **Frontend**
-![Next.js](https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=flat-square&logo=typescript)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.0-38B2AC?style=flat-square&logo=tailwind-css)
+![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js)
+![TypeScript](https://img.shields.io/badge/TypeScript-6-blue?style=flat-square&logo=typescript)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.0-38B2AC?style=flat-square&logo=tailwind-css)
 ![shadcn/ui](https://img.shields.io/badge/shadcn/ui-0.8.0-000000?style=flat-square)
 ![Radix UI](https://img.shields.io/badge/Radix_UI-1.0-161618?style=flat-square)
 
 ### **Backend**
-![Prisma](https://img.shields.io/badge/Prisma-5.0-2D3748?style=flat-square&logo=prisma)
+![Prisma](https://img.shields.io/badge/Prisma-7.0-2D3748?style=flat-square&logo=prisma)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-316192?style=flat-square&logo=postgresql)
 ![NextAuth.js](https://img.shields.io/badge/NextAuth.js-5.0-000000?style=flat-square)
 
 ### **Services**
 ![Cloudflare R2](https://img.shields.io/badge/Cloudflare_R2-Storage-FF6B6B?style=flat-square)
-![Zod](https://img.shields.io/badge/Zod-3.0-3066BE?style=flat-square)
+![Zod](https://img.shields.io/badge/Zod-4.0-3066BE?style=flat-square)
 ![Nodemailer](https://img.shields.io/badge/Nodemailer-6.0-FF6B6B?style=flat-square)
 
 </div>
@@ -121,6 +121,7 @@
 - **PostgreSQL** database
 - **Cloudflare R2** account (for file storage)
 - **SMTP** email service (Gmail, SendGrid, etc.)
+- **npm** package manager
 
 ### **1️⃣ Clone & Install**
 
@@ -131,11 +132,9 @@ cd errorx-forum
 
 # Install dependencies
 npm install
-# or
-yarn install
-# or
-pnpm install
 ```
+
+The project uses `package-lock.json`, so `npm install` is the supported install path.
 
 ### **2️⃣ Environment Setup**
 

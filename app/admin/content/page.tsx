@@ -18,7 +18,7 @@ import {
 import { ContentScheduler } from '@/components/content/content-scheduler';
 import { ModerationRules } from '@/components/content/moderation-rules';
 import { ContentTemplates } from '@/components/content/content-templates';
-import { ModerationAction } from '@/lib/content-management';
+import { ModerationAction } from '@/lib/content-types';
 
 // Mock data for demonstration
 const mockCategories = [

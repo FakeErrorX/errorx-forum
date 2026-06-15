@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { DefaultSeo } from 'next-seo';
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
@@ -36,7 +35,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: defaultSEO.defaultTitle,
   description: defaultSEO.description,
-  keywords: defaultSEO.additionalMetaTags?.find(tag => tag.name === 'keywords')?.content,
+  keywords: defaultSEO.additionalMetaTags?.find((tag: { name?: string; content?: string }) => tag.name === 'keywords')?.content,
   authors: [{ name: 'ErrorX Forum' }],
   creator: 'ErrorX Forum',
   publisher: 'ErrorX Forum',
@@ -54,7 +53,7 @@ export const metadata: Metadata = {
     description: defaultSEO.openGraph?.description,
     url: defaultSEO.openGraph?.url,
     siteName: defaultSEO.openGraph?.siteName,
-    images: defaultSEO.openGraph?.images ? defaultSEO.openGraph.images.map(img => ({
+    images: defaultSEO.openGraph?.images ? defaultSEO.openGraph.images.map((img: { url: string; width?: number; height?: number; alt?: string }) => ({
       url: img.url,
       width: img.width || 1200,
       height: img.height || 630,
@@ -67,7 +66,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: defaultSEO.openGraph?.title,
     description: defaultSEO.openGraph?.description,
-    images: defaultSEO.openGraph?.images ? defaultSEO.openGraph.images.map(img => ({
+    images: defaultSEO.openGraph?.images ? defaultSEO.openGraph.images.map((img: { url: string; width?: number; height?: number; alt?: string }) => ({
       url: img.url,
       width: img.width || 1200,
       height: img.height || 630,

@@ -1,4 +1,4 @@
-import { DefaultSeoProps } from 'next-seo';
+import { type DefaultSeoProps } from 'next-seo/pages';
 import { PUBLIC_ENV } from './public-env';
 
 // Use client-safe public envs without throwing at module load
